@@ -23,6 +23,10 @@ public class PolygonRasterizer {
 
     public void rasterize(Polygon polygon) {
         // TODO podminka pro velikost polygonu
+        int size = polygon.size();
+        if (size < 2) {
+            return; // musí mít alespoň dva body pro vykkreslení úsečky
+        }
         for (int i = 0; i < polygon.size(); i++) {
             Point2D p1 = polygon.getItem(i);
             // TODO pridat podmienku
