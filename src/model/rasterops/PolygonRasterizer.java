@@ -30,7 +30,8 @@ public class PolygonRasterizer {
         for (int i = 0; i < polygon.size(); i++) {
             Point2D p1 = polygon.getItem(i);
             // TODO pridat podmienku
-            Point2D p2 = polygon.getItem((i + 1) % polygon.size());
+//            Point2D p2 = polygon.getItem((i + 1) % polygon.size());
+            Point2D p2 = polygon.getItem(i + 1 != polygon.size() ? i + 1 : 0);
 
             liner.rasterize(
                     p1.getX(),
