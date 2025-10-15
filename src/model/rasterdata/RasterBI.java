@@ -17,6 +17,7 @@ public class RasterBI implements Raster {
         Graphics g = img.getGraphics();
         g.setColor(backgroundColor);
         g.fillRect(0, 0, img.getWidth() - 1, img.getHeight() - 1);
+        g.dispose();
     }
 
     @Override
@@ -33,19 +34,24 @@ public class RasterBI implements Raster {
     @Override
     public int getHeight() {
         // TODO
-        return 0;
+        return img.getHeight();
     }
 
     @Override
     public int getPixel(int x, int y) {
         // TODO
-        return 0;
+        if (x < 0 || y < 0 || x >= img.getWidth() || y >= img.getHeight()) {
+            return 0; //pixel mimo plátno! vrací černou
+        }
+        return img.getRGB(x, y);
     }
 
     @Override
     public void setPixel(int x, int y, int color) {
         // TODO
-        img.setRGB(x, y, color);
+        if (x >= 0 && y >= 0 && x < img.getWidth() && y < img.getHeight()) {
+            img.setRGB(x, y, color); //pixel je na plátnu, jinak nedělá nic
+        }
     }
 
     public BufferedImage getImg() {

@@ -4,7 +4,7 @@ import model.rasterdata.Raster;
 import model.rasterdata.RasterBI;
 
 import javax.swing.*;
-import java.awt.*;
+        import java.awt.*;
 
 public class Panel extends JPanel {
 
@@ -18,7 +18,7 @@ public class Panel extends JPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        raster.repaint(g);
+        raster.repaint(g); //vykresluje aktuální raster
     }
 
     public Raster getRaster() {
@@ -27,5 +27,6 @@ public class Panel extends JPanel {
 
     public void clear() {
         raster.clear();
+        repaint();
     }
 }

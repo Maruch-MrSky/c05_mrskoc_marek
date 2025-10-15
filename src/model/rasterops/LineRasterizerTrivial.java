@@ -10,28 +10,61 @@ public class LineRasterizerTrivial extends LineRasterizer {
 
     @Override
     public void drawLine(int x1, int y1, int x2, int y2) {
-        // TODO Dokoncit
-        double k = (double) (y2 - y1) / (x2 - x1);
-        double q = y1 - k * x1;
-        for (int x = x1; x <= x2; x++) {
-            int y = (int) (k * x + q);
-            raster.setPixel(x, y, color.getRGB());
+        // done TODO triviální algoritmus
+        int dx = x2 - x1;
+        int dy = y2 - y1;
+
+        if (dx == 0) { // vertikální úsečka
+            if (y1 > y2) {
+                int tmp = y1;
+                y1 = y2;
+                y2 = tmp;
+            }
+            for (int y = y1; y <= y2; y++) {
+                raster.setPixel(x1, y, color.getRGB());
+            }
+            return;
+        }
+        if (dy == 0) { // horizontální úsečka
+            if (x1 > x2) {
+                int tmp = x1;
+                x1 = x2;
+                x2 = tmp;
+            }
+            for (int x = x1; x <= x2; x++) {
+                raster.setPixel(x, y1, color.getRGB());
+            }
+            return;
         }
 
-        // 1. vypocitaj dx = (x2 - x1), dy = (y2 - y1)
-        // 2. if abs(dx) > abs(dy) (iterate by x)
-        // 3. if x1 > x2:
-        // prohod (x1, y1) s (x2, y2) - draw(x2, y2, x1, y1)
-        // else
-        // double k = (double) (y2 - y1) / (x2 - x1);
-        // double q = y1 - (k * x1);
-        // for (int x = x1; x <= x2; x++) {
-        //      int y = (int) (k * x + q);
-        //      raster.setColor(x, y, color);
-        // }
-        // else
-        // 4. if y1 > y2:
-        // prohod (x1, y1) s (x2, y2)
-        // stejnej algoritmus s prohozenim y and x
+        if (Math.abs(dx) > Math.abs(dy)) { // vykreslování podle X
+            if (x1 > x2) {
+                int tmpX = x1, tmpY = y1;
+                x1 = x2;
+                x2 = tmpX;
+                y1 = y2;
+                y2 = tmpY;
+            }
+            double k = (double) dy / dx;
+            double q = y1 - k * x1;
+            for (int x = x1; x <= x2; x++) {
+                int y = (int) Math.round(k * x + q);
+                raster.setPixel(x, y, color.getRGB());
+            }
+        } else { // vykreslování podle Y
+            if (y1 > y2) {
+                int tmpX = x1, tmpY = y1;
+                x1 = x2;
+                x2 = tmpX;
+                y1 = y2;
+                y2 = tmpY;
+            }
+            double k = (double) dx / dy; // x = k*y + q
+            double q = x1 - k * y1;
+            for (int y = y1; y <= y2; y++) {
+                int x = (int) Math.round(k * y + q);
+                raster.setPixel(x, y, color.getRGB());
+            }
+        }
     }
 }
