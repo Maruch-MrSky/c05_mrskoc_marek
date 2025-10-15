@@ -6,9 +6,8 @@ package controller;
 //  import java.awt.event.KeyAdapter;
 //  import java.awt.event.KeyEvent;
 
+import java.awt.*;
 import java.awt.event.*;
-import java.util.ArrayList;
-import java.util.List;
 
 //  import model.objectdata.Point2D;
 //  import model.objectdata.Line;
@@ -16,7 +15,7 @@ import java.util.List;
 import model.objectdata.*;
 //  import model.rasterdata.Raster;
 //  import model.rasterdata.RasterBI;
-import model.rasterdata.*;
+import model.objectdata.Polygon;
 //  import model.rasterops.LineRasterizer;
 //  import model.rasterops.LineRasterizerGraphics;
 //  import model.rasterops.LineRasterizerTrivial;
@@ -36,6 +35,7 @@ public class Controller2D implements Controller {
     private final Polygon polygon = new Polygon();
     private final LineRasterizer lineRasterizer;
 
+    private boolean shifted = false;
 
     public Controller2D(Panel panel) {
         this.panel = panel;
@@ -81,7 +81,23 @@ public class Controller2D implements Controller {
             @Override
             public void mouseDragged(MouseEvent e) {
                 if (startPoint != null) {
-                    endPoint = new Point2D(e.getX(), e.getY());
+                    int x2 = e.getX();
+                    int y2 = e.getY();
+
+                    if (shifted) {
+                        int dx = x2 - startPoint.x; // maybe .getX()?
+                        int dy = y2 - startPoint.y; // maybe .getY()?
+                        if (Math.abs(dx) > Math.abs(dy) * 2) {
+                            y2 = startPoint.y; // horizontální úsečka
+                        } else if (Math.abs(dx) * 2 < Math.abs(dy)) {
+                            x2 = startPoint.x; // vertikální úsečka
+                        } else {
+                            int diagonala = (Math.abs(dy) < Math.abs(dx)) ? Math.abs(dx) : Math.abs(dy);
+                            x2 = startPoint.x + (dx >= 0 ? diagonala : -diagonala);
+                            y2 = startPoint.y + (dy >= 0 ? diagonala : -diagonala);
+                        }
+                    }
+                    endPoint = new Point2D(x2, y2);
                     draggedLine = new Line(startPoint, endPoint, 0xffffff);
                     vykresleni();
                 }
@@ -92,23 +108,35 @@ public class Controller2D implements Controller {
         panel.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_C) {
-//                    lines.clear();
-                    polygon.clear();
-                    draggedLine = null; // zruší aktuální tažení úsečky
-                    panel.getRaster().clear();
-                    panel.repaint(); // překreslení panelu/plátna
+                switch (e.getKeyCode()) {
+                    case KeyEvent.VK_C -> {
+//                        lines.clear();
+                        polygon.clear();
+                        draggedLine = null; // zruší aktuální tažení úsečky
+                        startPoint = null; // <─┤
+                        endPoint = null; // <───┘
+                        panel.getRaster().clear();
+                        panel.repaint(); // překreslení panelu/plátna
+                    }
+                    case KeyEvent.VK_V -> {
+                        draggedLine = null; // zruší aktuální tažení úsečky
+                        startPoint = null; // <─┤
+                        endPoint = null; // <───┘
+                        vykresleni();
+                    }
+                    case KeyEvent.VK_B -> {
+                        // TODO barevná pružná přímka
+                    }
+                    case KeyEvent.VK_SHIFT -> {
+                        shifted = true;
+                    }
                 }
             }
-        });
 
-        // přerušení tažení pružné úsečky
-        panel.addKeyListener(new KeyAdapter() {
             @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-                    draggedLine = null; // zruší aktuální tažení úsečky
-                    panel.repaint(); // překreslení panelu/plátna
+            public void keyReleased(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_SHIFT) {
+                    shifted = false;
                 }
             }
         });
@@ -116,16 +144,30 @@ public class Controller2D implements Controller {
         panel.requestFocusInWindow();
     }
 
-    private void vykresleni() { // vykresluje uložené úsečky
+    private void vykresleni() {
         panel.getRaster().clear();
 //        for (Line line : lines) {
 //            LineRasterizer.rasterize(line);
 //        }
         PolygonRasterizer pr = new PolygonRasterizer(lineRasterizer);
-        pr.rasterize(polygon);
+        pr.rasterize(polygon); // vykreslení bodů polynomu
 
         if (draggedLine != null) {
-            lineRasterizer.rasterize(draggedLine);
+            lineRasterizer.rasterize(draggedLine); // vykreslení pružné úsečky
+            if (polygon.size() > 0) {
+                Point2D firstPolyToPruz = polygon.getItem(0);
+                lineRasterizer.rasterize(
+                        firstPolyToPruz.getX(), firstPolyToPruz.getY(), // počátek polygonu
+                        draggedLine.getEnd().getX(), draggedLine.getEnd().getY(), // konec pružné úsečky
+                        Color.WHITE
+                );
+                Point2D lastPolyToPruz = polygon.getItem(polygon.size() - 1);
+                lineRasterizer.rasterize(
+                        lastPolyToPruz.getX(), lastPolyToPruz.getY(), // poslední bod polygonu
+                        draggedLine.getStart().getX(), draggedLine.getStart().getY(), // počátek pružné úsečky
+                        Color.WHITE
+                );
+            }
         }
         panel.repaint();
     }
