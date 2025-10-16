@@ -52,6 +52,7 @@ public class Controller2D implements Controller {
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                if (startPoint == null) return;
                 Point2D newPoint;
                 if (draggedLine != null) {
                     newPoint = draggedLine.getEnd();
