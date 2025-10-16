@@ -26,6 +26,7 @@ public class Controller2D implements Controller {
     private final List<Polygon> polygons = new ArrayList<>();
     private Polygon polygon = new Polygon();
     private final LineRasterizer lineRasterizer;
+    private int grabbed = -1; // index přesunovaného vrcholu polygonu, -1 = nic
 
     private boolean shifted = false;
 
@@ -48,15 +49,24 @@ public class Controller2D implements Controller {
         panel.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                if (polygon.size() == 0) {
-                    startPoint = new Point2D(e.getX(), e.getY());
-                } else {
-                    startPoint = polygon.getLast();
+                if (e.getButton() == MouseEvent.BUTTON3 && polygon.size() > 0) {
+                    Point2D clickPoint = new Point2D(e.getX(), e.getY());
+                    Point2D nearest = polygon.getItem(polygon.findNearestPoint(clickPoint));
+                    if (nearest != null && nearest.distanceTo(clickPoint) <= 10) { // blízkost 10 px
+                        grabbed = polygon.findNearestPoint(clickPoint);
+                    }
+                } else if (e.getButton() == MouseEvent.BUTTON1) {
+                    if (polygon.size() == 0) {
+                        startPoint = new Point2D(e.getX(), e.getY());
+                    } else {
+                        startPoint = polygon.getLast();
+                    }
                 }
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                grabbed = -1; // uvolnění přesunovaného bodu polygonu
                 if (startPoint == null) return;
                 Point2D newPoint;
                 if (draggedLine != null) {
@@ -107,7 +117,11 @@ public class Controller2D implements Controller {
         panel.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                if (startPoint != null) {
+                if (grabbed != -1) {
+                    polygon.getItem(grabbed).setX(e.getX());
+                    polygon.getItem(grabbed).setY(e.getY());
+                    vykresleni();
+                } else if (startPoint != null) {
                     int x2 = e.getX();
                     int y2 = e.getY();
 
