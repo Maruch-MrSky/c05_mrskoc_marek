@@ -10,7 +10,6 @@ public class LineRasterizerBresenham extends LineRasterizer {
 
     @Override
     protected void drawLine(int x1, int y1, int x2, int y2) {
-        // done TODO Bresenhammův algoritmus
         // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
         int dx = Math.abs(x2 - x1);
         int dy = Math.abs(y2 - y1);
