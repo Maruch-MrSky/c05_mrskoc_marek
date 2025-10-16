@@ -52,8 +52,12 @@ public class Controller2D implements Controller {
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                Point2D newPoint = new Point2D(e.getX(), e.getY());
-
+                Point2D newPoint;
+                if (draggedLine != null) {
+                    newPoint = draggedLine.getEnd();
+                } else {
+                    newPoint = new Point2D(e.getX(), e.getY());
+                }
                 if (polygon.size() == 0) {
                     if (startPoint != null) {
                         endPoint = newPoint;
@@ -65,14 +69,14 @@ public class Controller2D implements Controller {
                     double dx = newPoint.getX() - first.getX();
                     double dy = newPoint.getY() - first.getY();
                     double dist = Math.sqrt(dx * dx + dy * dy);
-
-                    if (dist < 10) { // klik blízko začátku → uzavři polygon
-                        polygons.add(polygon); // uložíme dokončený polygon
+                    // klik blízko počátku ukončuje polygon
+                    if (dist < 7) { // tolerance 7 pixelů
+                        polygons.add(polygon); // uložení polygonu
                         polygon = new Polygon(); // nový polygon
                         startPoint = null;
                         endPoint = null;
                         draggedLine = null;
-                        vykresleni(); // zobraz všechny polygony
+                        vykresleni();
                         return;
                     } else {
                         polygon.addItem(newPoint);
