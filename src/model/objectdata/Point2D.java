@@ -29,8 +29,6 @@ public class Point2D {
         this.y = y;
     }
 
-    // DONE TODO distanceTo another Point2D
-    // https://en.wikipedia.org/wiki/Euclidean_distance
     public double distanceTo(Point2D other) {
         int dx = other.x - this.x; //q1-p1
         int dy = other.y - this.y; //q2-p2
