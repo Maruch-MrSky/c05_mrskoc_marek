@@ -26,7 +26,8 @@ public class Controller2D implements Controller {
     private final List<Polygon> polygons = new ArrayList<>();
     private Polygon polygon = new Polygon();
     private final LineRasterizer lineRasterizer;
-    private int grabbed = -1; // index přesunovaného vrcholu polygonu, -1 = nic
+    private int grabbedPoint = -1; // index přesunovaného vrcholu polygonu, -1 = nic
+    private int grabbedPolygon = -1; // index přesunovaného polygonu, -1 = nic
 
     private boolean shifted = false;
 
@@ -49,13 +50,23 @@ public class Controller2D implements Controller {
         panel.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                if (e.getButton() == MouseEvent.BUTTON3 && polygon.size() > 0) {
-                    Point2D clickPoint = new Point2D(e.getX(), e.getY());
-                    Point2D nearest = polygon.getItem(polygon.findNearestPoint(clickPoint));
-                    if (nearest != null && nearest.distanceTo(clickPoint) <= 10) { // blízkost 10 px
-                        grabbed = polygon.findNearestPoint(clickPoint);
+                Point2D clickPoint = new Point2D(e.getX(), e.getY());
+                if (e.getButton() == MouseEvent.BUTTON3) { // pravé tlačítko
+                    if (polygon.findNearestPoint(clickPoint) != -1 && polygon.getItem(polygon.findNearestPoint(clickPoint)).distanceTo(clickPoint) <= 10) { // hledání v aktuálním polygonu
+                        grabbedPolygon = -2; // aktuální polygon
+                        grabbedPoint = polygon.findNearestPoint(clickPoint);
+                        return;
                     }
-                } else if (e.getButton() == MouseEvent.BUTTON1) {
+                    for (int i = 0; i < polygons.size(); i++) { // hledání v ostatních polygonech
+                        Polygon poly = polygons.get(i);
+                        int nearest = poly.findNearestPoint(clickPoint);
+                        if (nearest != -1 && poly.getItem(nearest).distanceTo(clickPoint) <= 10) {
+                            grabbedPolygon = i;
+                            grabbedPoint = nearest;
+                            return;
+                        }
+                    }
+                } else if (e.getButton() == MouseEvent.BUTTON1) { // levé tlačítko
                     if (polygon.size() == 0) {
                         startPoint = new Point2D(e.getX(), e.getY());
                     } else {
@@ -66,8 +77,10 @@ public class Controller2D implements Controller {
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                grabbed = -1; // uvolnění přesunovaného bodu polygonu
+                grabbedPoint = -1;
+                grabbedPolygon = -1;
                 if (startPoint == null) return;
+
                 Point2D newPoint;
                 if (draggedLine != null) {
                     newPoint = draggedLine.getEnd();
@@ -86,9 +99,9 @@ public class Controller2D implements Controller {
                     Point2D first = polygon.getFirst();
                     double dx = newPoint.getX() - first.getX();
                     double dy = newPoint.getY() - first.getY();
-                    double dist = Math.sqrt(dx * dx + dy * dy);
+                    double distance = Math.sqrt(dx * dx + dy * dy);
                     // klik blízko počátku ukončuje polygon
-                    if (dist < 7) { // tolerance 7 pixelů
+                    if (distance < 7) { // tolerance 7 pixelů
                         if (polygon.size() > 0) {
                             Point2D last = polygon.getLast();
                             lines.add(new Line(last, first, 0xffffff));
@@ -117,9 +130,17 @@ public class Controller2D implements Controller {
         panel.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                if (grabbed != -1) {
-                    polygon.getItem(grabbed).setX(e.getX());
-                    polygon.getItem(grabbed).setY(e.getY());
+                if (grabbedPoint != -1) {
+                    if (grabbedPolygon == -2) { // aktuální polygon
+                        Point2D p = polygon.getItem(grabbedPoint);
+                        p.setX(e.getX());
+                        p.setY(e.getY());
+                    } else { // uložený polygon
+                        Polygon pgn = polygons.get(grabbedPolygon);
+                        Point2D p = pgn.getItem(grabbedPoint);
+                        p.setX(e.getX());
+                        p.setY(e.getY());
+                    }
                     vykresleni();
                 } else if (startPoint != null) {
                     int x2 = e.getX();
@@ -133,7 +154,7 @@ public class Controller2D implements Controller {
                         } else if (Math.abs(dx) * 2 < Math.abs(dy)) {
                             x2 = (int) Math.round(startPoint.getX()); // vertikální úsečka
                         } else {
-                            int diagonala = (Math.abs(dy) < Math.abs(dx)) ? Math.abs(dx) : Math.abs(dy); // diagonální úsečka
+                            int diagonala = (Math.abs(dx) > Math.abs(dy)) ? Math.abs(dx) : Math.abs(dy); // diagonální úsečka
                             x2 = (int) Math.round(startPoint.getX()) + (dx >= 0 ? diagonala : -diagonala);
                             y2 = (int) Math.round(startPoint.getY()) + (dy >= 0 ? diagonala : -diagonala);
                         }
