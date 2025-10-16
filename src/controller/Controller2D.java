@@ -37,29 +37,35 @@ public class Controller2D implements Controller {
 
     @Override
     public void initListeners(Panel panel) {
-        // TODO MouseListener, MouseRelease
         panel.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                startPoint = new Point2D(e.getX(), e.getY());
+                if (polygon.size() == 0) {
+                    startPoint = new Point2D(e.getX(), e.getY());
+                } else {
+                    startPoint = polygon.getFirst();
+                }
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                if (startPoint != null) {
-                    endPoint = new Point2D(e.getX(), e.getY());
-                    polygon.addItem(startPoint);
-                    polygon.addItem(endPoint);
-
-                    startPoint = null;
-                    endPoint = null;
-                    draggedLine = null;
-                    vykresleni();
+                if (polygon.size() == 0) {
+                    if (startPoint != null) {
+                        endPoint = new Point2D(e.getX(), e.getY());
+                        polygon.addItem(startPoint);
+                        polygon.addItem(endPoint);
+                    }
+                } else { // polygon už má alespoň jeden bod
+                    Point2D newPoint = new Point2D(e.getX(), e.getY());
+                    polygon.addItem(newPoint);
                 }
+                startPoint = null;
+                endPoint = null;
+                draggedLine = null;
+                vykresleni();
             }
         });
 
-        // TODO MouseMotion
         panel.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
@@ -87,7 +93,6 @@ public class Controller2D implements Controller {
             }
         });
 
-        // TODO KeyListener (klávesa C maže panel/plátno)
         panel.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -107,11 +112,8 @@ public class Controller2D implements Controller {
                         vykresleni();
                     }
                     case KeyEvent.VK_B -> {
-                        Point2D prvni = polygon.getFirst();
-                        Point2D posledni = draggedLine.getEnd();
-                        Line coloredLine = new Line(prvni, posledni, Color.RED.getRGB());
-                        lineRasterizer.rasterize(coloredLine);
-                        panel.repaint();
+                        // TODO po stisku B se vykreslí úsečka s lineárním přechodem dvou barev
+//
                     }
                     case KeyEvent.VK_SHIFT -> {
                         shifted = true;
@@ -126,7 +128,7 @@ public class Controller2D implements Controller {
                 }
             }
         });
-        panel.setFocusable(true);   //fokus panelu na klavesnici
+        panel.setFocusable(true);   // fokus panelu na klavesnici
         panel.requestFocusInWindow();
     }
 
@@ -136,22 +138,21 @@ public class Controller2D implements Controller {
         pr.rasterize(polygon); // vykreslení bodů polynomu
 
         if (draggedLine != null) {
-            lineRasterizer.rasterize(draggedLine); // vykreslení pružné úsečky
-            if (polygon.size() ==0 ) {
+            if (polygon.size() == 0) { // tvoření normální pružné úsečky
                 lineRasterizer.rasterize(draggedLine);
             } else {
                 Point2D firstPolyToPruz = polygon.getItem(0);
                 lineRasterizer.rasterize(
                         firstPolyToPruz.getX(), firstPolyToPruz.getY(), // počátek polygonu
-                        draggedLine.getEnd().getX(), draggedLine.getEnd().getY(), // konec pružné úsečky
+                        draggedLine.getEnd().getX(), draggedLine.getEnd().getY(), // pohyblivý bod
                         Color.WHITE
                 );
-//                Point2D lastPolyToPruz = polygon.getItem(polygon.size() - 1);
-//                lineRasterizer.rasterize(
-//                        lastPolyToPruz.getX(), lastPolyToPruz.getY(), // poslední bod polygonu
-//                        draggedLine.getStart().getX(), draggedLine.getStart().getY(), // počátek pružné úsečky
-//                        Color.WHITE
-//                );
+                Point2D lastPolyToPruz = polygon.getItem(polygon.size() - 1);
+                lineRasterizer.rasterize(
+                        lastPolyToPruz.getX(), lastPolyToPruz.getY(), // poslední bod polygonu
+                        draggedLine.getEnd().getX(), draggedLine.getEnd().getY(), // pohyblivý bod
+                        Color.WHITE
+                );
             }
         }
         panel.repaint();
