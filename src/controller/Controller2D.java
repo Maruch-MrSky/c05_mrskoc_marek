@@ -2,11 +2,17 @@ package controller;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
-import model.objectdata.*;
+import model.objectdata.Line;
+import model.objectdata.Point2D;
 import model.objectdata.Polygon;
-import model.rasterops.*;
+import model.rasterops.LineRasterizer;
+import model.rasterops.LineRasterizerBresenham;
+//import model.rasterops.LineRasterizerTrivial;
+import model.rasterops.PolygonRasterizer;
+
 import view.Panel;
 
 public class Controller2D implements Controller {
@@ -16,9 +22,8 @@ public class Controller2D implements Controller {
     private Point2D endPoint;
     private Line draggedLine;
 
-
-    //private final Polygon polygon = new Polygon();
-    private final java.util.List<Polygon> polygons = new ArrayList<>();
+    private final List<Line> lines = new ArrayList<>();
+    private final List<Polygon> polygons = new ArrayList<>();
     private Polygon polygon = new Polygon();
     private final LineRasterizer lineRasterizer;
 
@@ -46,7 +51,7 @@ public class Controller2D implements Controller {
                 if (polygon.size() == 0) {
                     startPoint = new Point2D(e.getX(), e.getY());
                 } else {
-                    startPoint = polygon.getFirst();
+                    startPoint = polygon.getLast();
                 }
             }
 
@@ -59,11 +64,13 @@ public class Controller2D implements Controller {
                 } else {
                     newPoint = new Point2D(e.getX(), e.getY());
                 }
+
                 if (polygon.size() == 0) {
                     if (startPoint != null) {
                         endPoint = newPoint;
                         polygon.addItem(startPoint);
                         polygon.addItem(endPoint);
+                        lines.add(new Line(startPoint, endPoint, draggedLine.getColor()));
                     }
                 } else {
                     Point2D first = polygon.getFirst();
@@ -72,6 +79,10 @@ public class Controller2D implements Controller {
                     double dist = Math.sqrt(dx * dx + dy * dy);
                     // klik blízko počátku ukončuje polygon
                     if (dist < 7) { // tolerance 7 pixelů
+                        if (polygon.size() > 0) {
+                            Point2D last = polygon.getLast();
+                            lines.add(new Line(last, first, 0xffffff));
+                        }
                         polygons.add(polygon); // uložení polygonu
                         polygon = new Polygon(); // nový polygon
                         startPoint = null;
@@ -80,7 +91,10 @@ public class Controller2D implements Controller {
                         vykresleni();
                         return;
                     } else {
+                        // přidat nový vrchol a uložit úsečku mezi předchozím a novým
+                        Point2D prev = polygon.getLast();
                         polygon.addItem(newPoint);
+                        lines.add(new Line(prev, newPoint, 0xffffff));
                     }
                 }
                 startPoint = null;
@@ -98,16 +112,16 @@ public class Controller2D implements Controller {
                     int y2 = e.getY();
 
                     if (shifted) {
-                        int dx = x2 - startPoint.x; // maybe .getX()?
-                        int dy = y2 - startPoint.y; // maybe .getY()?
+                        int dx = x2 - (int) Math.round(startPoint.getX());
+                        int dy = y2 - (int) Math.round(startPoint.getY());
                         if (Math.abs(dx) > Math.abs(dy) * 2) {
-                            y2 = startPoint.y; // horizontální úsečka
+                            y2 = (int) Math.round(startPoint.getY()); // horizontální úsečka
                         } else if (Math.abs(dx) * 2 < Math.abs(dy)) {
-                            x2 = startPoint.x; // vertikální úsečka
+                            x2 = (int) Math.round(startPoint.getX()); // vertikální úsečka
                         } else {
-                            int diagonala = (Math.abs(dy) < Math.abs(dx)) ? Math.abs(dx) : Math.abs(dy);
-                            x2 = startPoint.x + (dx >= 0 ? diagonala : -diagonala);
-                            y2 = startPoint.y + (dy >= 0 ? diagonala : -diagonala);
+                            int diagonala = (Math.abs(dy) < Math.abs(dx)) ? Math.abs(dx) : Math.abs(dy); // diagonální úsečka
+                            x2 = (int) Math.round(startPoint.getX()) + (dx >= 0 ? diagonala : -diagonala);
+                            y2 = (int) Math.round(startPoint.getY()) + (dy >= 0 ? diagonala : -diagonala);
                         }
                     }
                     endPoint = new Point2D(x2, y2);
@@ -122,22 +136,24 @@ public class Controller2D implements Controller {
             public void keyPressed(KeyEvent e) {
                 switch (e.getKeyCode()) {
                     case KeyEvent.VK_C -> {
+                        // vymazat vše: body polygonu i uložené úsečky
                         polygon.clear();
-                        draggedLine = null; // zruší aktuální tažení úsečky
-                        startPoint = null; // <─┤
-                        endPoint = null; // <───┘
+                        polygons.clear();
+                        lines.clear();
+                        draggedLine = null;
+                        startPoint = null;
+                        endPoint = null;
                         panel.getRaster().clear();
-                        panel.repaint(); // překreslení panelu/plátna
+                        panel.repaint();
                     }
                     case KeyEvent.VK_V -> {
-                        draggedLine = null; // zruší aktuální tažení úsečky
-                        startPoint = null; // <─┤
-                        endPoint = null; // <───┘
+                        draggedLine = null;
+                        startPoint = null;
+                        endPoint = null;
                         vykresleni();
                     }
                     case KeyEvent.VK_B -> {
                         // TODO po stisku B se vykreslí úsečka s lineárním přechodem dvou barev
-//
                     }
                     case KeyEvent.VK_SHIFT -> {
                         shifted = true;
@@ -158,11 +174,17 @@ public class Controller2D implements Controller {
 
     private void vykresleni() {
         panel.getRaster().clear();
+
+        // nejprve vykreslit všechny uložené úsečky
+        for (Line l : lines) {
+            lineRasterizer.rasterize(l);
+        }
+
         PolygonRasterizer pr = new PolygonRasterizer(lineRasterizer);
-        for (Polygon poly : polygons) { // vykreslení všech polygonů
+        for (Polygon poly : polygons) { // vykreslení všech uložených polygonů (body)
             pr.rasterize(poly, true); // vykreslení bodů polygonu
         }
-        pr.rasterize(polygon, false);
+        pr.rasterize(polygon, false); // aktuální polygon (body, neuzavřený)
 
         if (draggedLine != null) {
             if (polygon.size() == 0) { // tvoření normální pružné úsečky
@@ -171,14 +193,14 @@ public class Controller2D implements Controller {
                 Point2D firstPolyToPruz = polygon.size() > 0 ? polygon.getFirst() : startPoint;
 
                 lineRasterizer.rasterize(
-                        firstPolyToPruz.getX(), firstPolyToPruz.getY(), // počátek polygonu
-                        draggedLine.getEnd().getX(), draggedLine.getEnd().getY(), // pohyblivý bod
+                        firstPolyToPruz.getX(), firstPolyToPruz.getY(),
+                        draggedLine.getEnd().getX(), draggedLine.getEnd().getY(),
                         Color.WHITE
                 );
                 Point2D lastPolyToPruz = polygon.size() > 0 ? polygon.getLast() : startPoint;
                 lineRasterizer.rasterize(
-                        lastPolyToPruz.getX(), lastPolyToPruz.getY(), // poslední bod polygonu
-                        draggedLine.getEnd().getX(), draggedLine.getEnd().getY(), // pohyblivý bod
+                        lastPolyToPruz.getX(), lastPolyToPruz.getY(),
+                        draggedLine.getEnd().getX(), draggedLine.getEnd().getY(),
                         Color.WHITE
                 );
             }
