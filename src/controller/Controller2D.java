@@ -2,6 +2,7 @@ package controller;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.util.*;
 
 import model.objectdata.*;
 import model.objectdata.Polygon;
@@ -16,7 +17,9 @@ public class Controller2D implements Controller {
     private Line draggedLine;
 
 
-    private final Polygon polygon = new Polygon();
+    //private final Polygon polygon = new Polygon();
+    private final java.util.List<Polygon> polygons = new ArrayList<>();
+    private Polygon polygon = new Polygon();
     private final LineRasterizer lineRasterizer;
 
     private boolean shifted = false;
@@ -49,15 +52,31 @@ public class Controller2D implements Controller {
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                Point2D newPoint = new Point2D(e.getX(), e.getY());
+
                 if (polygon.size() == 0) {
                     if (startPoint != null) {
-                        endPoint = new Point2D(e.getX(), e.getY());
+                        endPoint = newPoint;
                         polygon.addItem(startPoint);
                         polygon.addItem(endPoint);
                     }
-                } else { // polygon už má alespoň jeden bod
-                    Point2D newPoint = new Point2D(e.getX(), e.getY());
-                    polygon.addItem(newPoint);
+                } else {
+                    Point2D first = polygon.getFirst();
+                    double dx = newPoint.getX() - first.getX();
+                    double dy = newPoint.getY() - first.getY();
+                    double dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 10) { // klik blízko začátku → uzavři polygon
+                        polygons.add(polygon); // uložíme dokončený polygon
+                        polygon = new Polygon(); // nový polygon
+                        startPoint = null;
+                        endPoint = null;
+                        draggedLine = null;
+                        vykresleni(); // zobraz všechny polygony
+                        return;
+                    } else {
+                        polygon.addItem(newPoint);
+                    }
                 }
                 startPoint = null;
                 endPoint = null;
@@ -135,19 +154,23 @@ public class Controller2D implements Controller {
     private void vykresleni() {
         panel.getRaster().clear();
         PolygonRasterizer pr = new PolygonRasterizer(lineRasterizer);
-        pr.rasterize(polygon); // vykreslení bodů polynomu
+        for (Polygon poly : polygons) { // vykreslení všech polygonů
+            pr.rasterize(poly, true); // vykreslení bodů polygonu
+        }
+        pr.rasterize(polygon, false);
 
         if (draggedLine != null) {
             if (polygon.size() == 0) { // tvoření normální pružné úsečky
                 lineRasterizer.rasterize(draggedLine);
             } else {
-                Point2D firstPolyToPruz = polygon.getItem(0);
+                Point2D firstPolyToPruz = polygon.size() > 0 ? polygon.getFirst() : startPoint;
+
                 lineRasterizer.rasterize(
                         firstPolyToPruz.getX(), firstPolyToPruz.getY(), // počátek polygonu
                         draggedLine.getEnd().getX(), draggedLine.getEnd().getY(), // pohyblivý bod
                         Color.WHITE
                 );
-                Point2D lastPolyToPruz = polygon.getItem(polygon.size() - 1);
+                Point2D lastPolyToPruz = polygon.size() > 0 ? polygon.getLast() : startPoint;
                 lineRasterizer.rasterize(
                         lastPolyToPruz.getX(), lastPolyToPruz.getY(), // poslední bod polygonu
                         draggedLine.getEnd().getX(), draggedLine.getEnd().getY(), // pohyblivý bod
