@@ -227,6 +227,19 @@ public class Controller2D implements Controller {
                     case KeyEvent.VK_SHIFT -> {
                         shifted = true;
                     }
+                    case KeyEvent.VK_X -> {
+                        if (polygon.size() > 0) { // maže pouze bod
+                            int lastIndex = polygon.size() - 1;
+                            if (polygon.size() > 1) { // maže úsečky s tímto bodem spojenou
+                                Point2D last = polygon.getItem(lastIndex);
+                                Point2D prev = polygon.getItem(lastIndex - 1);
+                                lines.removeIf(line -> (line.getStart().equals(prev) && line.getEnd().equals(last)) || (line.getStart().equals(last) && line.getEnd().equals(prev))
+                                );
+                            }
+                            polygon.removeItem(lastIndex);
+                            vykresleni();
+                        }
+                    }
                 }
             }
 
