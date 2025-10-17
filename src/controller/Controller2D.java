@@ -275,8 +275,6 @@ public class Controller2D implements Controller {
 
     private void vykresleni() {
         panel.getRaster().clear();
-
-        // nejprve vykreslit všechny uložené úsečky
         for (Line l : lines) {
             lineRasterizer.rasterize(l);
         }
@@ -289,15 +287,10 @@ public class Controller2D implements Controller {
 
         if (draggedLine != null) {
             if (polygon.size() == 0) { // tvoření normální pružné úsečky
-                if (colorfull) {
-                    lineRasterizer.rasterize(draggedLine);
-                } else {
-                    lineRasterizerColorful.rasterize(draggedLine);
-                }
+                (colorfull ? lineRasterizerColorful : lineRasterizer).rasterize(draggedLine);
             } else {
                 Point2D firstPolyToPruz = polygon.size() > 0 ? polygon.getFirst() : startPoint;
                 Point2D lastPolyToPruz = polygon.size() > 0 ? polygon.getLast() : startPoint;
-
                 (colorfull ? lineRasterizerColorful : lineRasterizer).rasterize(
                         firstPolyToPruz.getX(), firstPolyToPruz.getY(),
                         draggedLine.getEnd().getX(), draggedLine.getEnd().getY(),
