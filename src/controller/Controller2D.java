@@ -8,6 +8,7 @@ import java.util.List;
 import model.objectdata.Line;
 import model.objectdata.Point2D;
 import model.objectdata.Polygon;
+import model.rasterops.LineRasterizerColoredBresenham;
 import model.rasterops.LineRasterizer;
 import model.rasterops.LineRasterizerBresenham;
 //import model.rasterops.LineRasterizerTrivial;
@@ -26,6 +27,7 @@ public class Controller2D implements Controller {
     private final List<Polygon> polygons = new ArrayList<>();
     private Polygon polygon = new Polygon();
     private final LineRasterizer lineRasterizer;
+    private final LineRasterizerColoredBresenham lineRasterizerColorful;
     private int grabbedPoint = -1; // index přesunovaného vrcholu polygonu, -1 = nic
     private int grabbedPolygon = -1; // index přesunovaného polygonu, -1 = nic
 
@@ -36,6 +38,7 @@ public class Controller2D implements Controller {
         this.panel = panel;
         //this.lineRasterizer = new LineRasterizerTrivial(panel.getRaster());
         this.lineRasterizer = new LineRasterizerBresenham(panel.getRaster());
+        this.lineRasterizerColorful = new LineRasterizerColoredBresenham(panel.getRaster());
         initObjects();
         initListeners(panel);
     }
@@ -223,6 +226,7 @@ public class Controller2D implements Controller {
                     }
                     case KeyEvent.VK_B -> {
                         // TODO po stisku B se vykreslí úsečka s lineárním přechodem dvou barev
+                        colorfull = !colorfull;
                     }
                     case KeyEvent.VK_SHIFT -> {
                         shifted = true;
@@ -285,17 +289,21 @@ public class Controller2D implements Controller {
 
         if (draggedLine != null) {
             if (polygon.size() == 0) { // tvoření normální pružné úsečky
-                lineRasterizer.rasterize(draggedLine);
+                if (colorfull) {
+                    lineRasterizer.rasterize(draggedLine);
+                } else {
+                    lineRasterizerColorful.rasterize(draggedLine);
+                }
             } else {
                 Point2D firstPolyToPruz = polygon.size() > 0 ? polygon.getFirst() : startPoint;
+                Point2D lastPolyToPruz = polygon.size() > 0 ? polygon.getLast() : startPoint;
 
-                lineRasterizer.rasterize(
+                (colorfull ? lineRasterizerColorful : lineRasterizer).rasterize(
                         firstPolyToPruz.getX(), firstPolyToPruz.getY(),
                         draggedLine.getEnd().getX(), draggedLine.getEnd().getY(),
                         Color.WHITE
                 );
-                Point2D lastPolyToPruz = polygon.size() > 0 ? polygon.getLast() : startPoint;
-                lineRasterizer.rasterize(
+                (colorfull ? lineRasterizerColorful : lineRasterizer).rasterize(
                         lastPolyToPruz.getX(), lastPolyToPruz.getY(),
                         draggedLine.getEnd().getX(), draggedLine.getEnd().getY(),
                         Color.WHITE
