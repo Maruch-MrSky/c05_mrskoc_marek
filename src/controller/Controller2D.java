@@ -30,6 +30,7 @@ public class Controller2D implements Controller {
     private int grabbedPolygon = -1; // index přesunovaného polygonu, -1 = nic
 
     private boolean shifted = false;
+    private boolean colorfull = false; // odmítám, tahle blbost mě připraví o nervy
 
     public Controller2D(Panel panel) {
         this.panel = panel;
@@ -71,6 +72,39 @@ public class Controller2D implements Controller {
                         startPoint = new Point2D(e.getX(), e.getY());
                     } else {
                         startPoint = polygon.getLast();
+                    }
+                } else if (e.getButton() == MouseEvent.BUTTON2) { // prostřední tlačítko
+                    for (Polygon poly : polygons) {
+                        if (poly.size() < 2) continue;
+                        double minDist = Double.MAX_VALUE;
+                        int insertIndex = -1;
+                        Point2D projection = null;
+
+                        for (int i = 0; i < poly.size(); i++) {
+                            Point2D a = poly.getItem(i);
+                            Point2D b = poly.getItem((i + 1) % poly.size());
+                            Point2D proj = projectPointOnLineSegment(a, b, clickPoint);
+                            double dist = proj.distanceTo(clickPoint);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                insertIndex = i + 1;
+                                projection = proj;
+                            }
+                        }
+                        if (minDist <= 10) { // tolerance 10 pixelů
+                            poly.addItemToIndex(insertIndex, projection);
+                            Point2D a = poly.getItem((insertIndex - 1 + poly.size()) % poly.size());
+                            Point2D b = poly.getItem((insertIndex + 1) % poly.size());
+                            lines.removeIf(line ->
+                                    (line.getStart().equals(a) && line.getEnd().equals(b)) ||
+                                            (line.getStart().equals(b) && line.getEnd().equals(a))
+                            );
+                            lines.add(new Line(a, projection, 0xffffff));
+                            lines.add(new Line(projection, b, 0xffffff));
+
+                            vykresleni();
+                            return;
+                        }
                     }
                 }
             }
@@ -205,6 +239,21 @@ public class Controller2D implements Controller {
         });
         panel.setFocusable(true);   // fokus panelu na klavesnici
         panel.requestFocusInWindow();
+    }
+
+    private Point2D projectPointOnLineSegment(Point2D a, Point2D b, Point2D clickPoint) {
+        double ax = a.getX(), ay = a.getY();
+        double bx = b.getX(), by = b.getY();
+        double clickPointX = clickPoint.getX(), clickPointY = clickPoint.getY();
+        double dx = bx - ax;
+        double dy = by - ay;
+
+        if (dx == 0 && dy == 0) {
+            return new Point2D(ax, ay); // hrana je bod
+        }
+        double t = ((clickPointX - ax) * dx + (clickPointY - ay) * dy) / (dx * dx + dy * dy);
+        t = Math.max(0, Math.min(1, t)); // omezení na úsečku
+        return new Point2D(ax + t * dx, ay + t * dy);
     }
 
     private void vykresleni() {
