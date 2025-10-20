@@ -137,11 +137,12 @@ public class Controller2D implements Controller {
                     double dx = newPoint.getX() - first.getX();
                     double dy = newPoint.getY() - first.getY();
                     double distance = Math.sqrt(dx * dx + dy * dy);
+                    int color = draggedLine != null ? draggedLine.getColor() : 0xffffff;
                     // klik blízko počátku ukončuje polygon
                     if (distance < 7) { // tolerance 7 pixelů
                         if (polygon.size() > 0) {
                             Point2D last = polygon.getLast();
-                            lines.add(new Line(last, first, 0xffffff));
+                            lines.add(new Line(last, first, color));
                         }
                         polygons.add(polygon); // uložení polygonu
                         polygon = new Polygon(); // nový polygon
@@ -154,7 +155,7 @@ public class Controller2D implements Controller {
                         // přidat nový vrchol a uložit úsečku mezi předchozím a novým
                         Point2D prev = polygon.getLast();
                         polygon.addItem(newPoint);
-                        lines.add(new Line(prev, newPoint, 0xffffff));
+                        lines.add(new Line(prev, newPoint, color));
                     }
                 }
                 startPoint = null;
