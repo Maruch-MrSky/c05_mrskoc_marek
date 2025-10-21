@@ -1,5 +1,5 @@
 package model.rasterops.filler;
 
 public class FloodFill {
-    // TODO
+    // TODO implement flood fill algorithm
 }
