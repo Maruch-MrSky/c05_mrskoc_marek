@@ -8,11 +8,11 @@ import java.util.List;
 import model.objectdata.Line;
 import model.objectdata.Point2D;
 import model.objectdata.Polygon;
-import model.rasterops.LineRasterizerColoredBresenham;
-import model.rasterops.LineRasterizer;
-import model.rasterops.LineRasterizerBresenham;
-//import model.rasterops.LineRasterizerTrivial;
-import model.rasterops.PolygonRasterizer;
+import model.rasterops.rasterizer.LineRasterizerColoredBresenham;
+import model.rasterops.rasterizer.LineRasterizer;
+import model.rasterops.rasterizer.LineRasterizerBresenham;
+//import model.rasterops.rasterizer.LineRasterizerTrivial;
+import model.rasterops.rasterizer.PolygonRasterizer;
 
 import view.Panel;
 
