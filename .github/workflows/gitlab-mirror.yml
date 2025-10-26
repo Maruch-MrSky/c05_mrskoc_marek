@@ -2,7 +2,8 @@ name: Mirror to GitLab
 
 on:
   push:
-    branches: [ main, master ]  # Adjust to match your branch name(s)
+    branches: [ main, master ]  # Runs automatically on push
+  workflow_dispatch:             # Allows manual run from the Actions tab
 
 jobs:
   sync:
