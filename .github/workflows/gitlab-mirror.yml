@@ -22,7 +22,7 @@ jobs:
 
       - name: Add GitLab remote
         run: |
-          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/Maruch-MrSky/c05_mrskoc_marek.git
+          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/Maruch-MrSky/c05_mrskoc-marek.git
 
       - name: Push to GitLab
         run: |
