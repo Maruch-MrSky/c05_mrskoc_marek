@@ -13,17 +13,30 @@ public class SeedFill {
     }
 
     public void seedFill4(int x, int y, Color newCol) {
-        // podminka pro osetreni hranice obrazovky
-        // podminka img.getPixel(x, y) == backgroundColor
-        // img.setPixel(x, y, newCol);
-        // seedFill4(x + 1, y, newCol);
-        // seedFill4(x - 1, y, newCol);
-        // seedFill4(x, y + 1, newCol);
-        // seedFill4(x, y - 1, newCol);
+        // TODO
+//        podminka pro osetreni hranice obrazovky
+//        if (img.getPixel(x, y) == backgroundColor) {
+//            img.setPixel(x, y, newCol);
+//            seedFill4(x + 1, y, newCol);
+//            seedFill4(x - 1, y, newCol);
+//            seedFill4(x, y + 1, newCol);
+//            seedFill4(x, y - 1, newCol);
     }
 
-    public void seedFill8() {
+    public void seedFill8(int x, int y, Color newCol) {
         // TODO
+//        podminka pro osetreni hranice obrazovky
+//        if (img.getPixel(x, y) == backgroundColor) {
+//            img.setPixel(x, y, newCol);
+//            seedFill4(x + 1, y, newCol);
+//            seedFill4(x - 1, y, newCol);
+//            seedFill4(x, y + 1, newCol);
+//            seedFill4(x, y - 1, newCol);
+//            seedFill4(x + 1, y + 1, newCol);
+//            seedFill4(x - 1, y - 1, newCol);
+//            seedFill4(x + 1, y - 1, newCol);
+//            seedFill4(x - 1, y + 1, newCol);
+//         }
     }
 
 }

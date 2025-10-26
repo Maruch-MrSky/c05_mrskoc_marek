@@ -1,0 +1,21 @@
+name: Mirror to GitLab
+
+on:
+  push:
+    branches: [ main, master ]  # Adjust to match your branch name(s)
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Push to GitLab
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        run: |
+          git config --global user.name "github-bot"
+          git config --global user.email "bot@example.com"
+          git remote add gitlab https://oauth2:${GITLAB_TOKEN}@gitlab.com/Maruch-MrSky/c05_mrskoc-marek.git
+          git push --mirror gitlab
