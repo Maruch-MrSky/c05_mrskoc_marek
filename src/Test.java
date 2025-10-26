@@ -7,7 +7,7 @@ public class Test {
     // psvm
     public static void main(String[] args) {
 
-        // Zasobnik LIFO
+        // Zasobnik LIFO.
 
         Stack<String> zasobnik = new Stack<>();
         zasobnik.push("Google");    // 1. navstivena stranka
