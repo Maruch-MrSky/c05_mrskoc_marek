@@ -1,11 +1,10 @@
 name: Push to GitLab
 
-# Triggers: manual or push to any branch
 on:
   push:
     branches:
-      - '**'  # all branches
-  workflow_dispatch:
+      - '**'  # run on any push
+  workflow_dispatch:      # allows manual trigger
 
 jobs:
   push_to_gitlab:
@@ -15,7 +14,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # required for --mirror push
+          fetch-depth: 0  # full clone for --mirror
 
       - name: Set up Git
         run: |
@@ -27,12 +26,16 @@ jobs:
         env:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
         run: |
-          try {
+          # Remove existing remote if it exists
+          if (git remote get-url gitlab -ErrorAction SilentlyContinue) {
               git remote remove gitlab
-          } catch {
-              Write-Host "Remote 'gitlab' does not exist, continuing..."
           }
 
-          git remote add gitlab "https://oauth2:${env:GITLAB_TOKEN}@gitlab.com/Maruch-MrSky/c05_mrskoc-marek.git"
+          # Add GitLab remote using PAT (quote to handle special characters)
+          $gitUrl = "https://oauth2:${env:GITLAB_TOKEN}@gitlab.com/Maruch-MrSky/c05_mrskoc-marek.git"
+          git remote add gitlab $gitUrl
+
+          # Push all branches, tags, and refs
           git push --mirror gitlab --verbose
         shell: pwsh
+
