@@ -24,6 +24,12 @@ jobs:
         env:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
         run: |
-          git remote remove gitlab || exit 0
+          try {
+              git remote remove gitlab
+          } catch {
+              Write-Host "Remote 'gitlab' does not exist, continuing..."
+          }
+
           git remote add gitlab https://oauth2:${env:GITLAB_TOKEN}@gitlab.com/Maruch-MrSky/c05_mrskoc-marek.git
-          git push --mirror gitlab
+          git push --mirror gitlab --verbose
+        shell: pwsh
