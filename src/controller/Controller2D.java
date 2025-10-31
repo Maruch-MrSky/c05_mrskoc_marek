@@ -30,15 +30,21 @@ public class Controller2D implements Controller {
 
     private final List<Line> lines = new ArrayList<>();
     private final List<Polygon> polygons = new ArrayList<>();
+    private final List<Filling> fills = new ArrayList<>();
     private Polygon polygon = new Polygon();
     private final LineRasterizer lineRasterizer;
     private final LineRasterizerColoredBresenham lineRasterizerColorful;
     private int grabbedPoint = -1; // index přesunovaného vrcholu polygonu, -1 = nic
     private int grabbedPolygon = -1; // index přesunovaného polygonu, -1 = nic
 
-
     private boolean shifted = false;
     private boolean colorfull = false; // odmítám, tahle blbost mě připraví o nervy
+
+    private static class Filling {
+        final int x, y;
+        final Color color;
+        Filling(int x, int y, Color color) { this.x = x; this.y = y; this.color = color; }
+    }
 
     public Controller2D(Panel panel) {
         this.panel = panel;
@@ -82,17 +88,13 @@ public class Controller2D implements Controller {
                             return;
                         }
                     }
-                    // vyplňování polygonu
                     int x = e.getX();
                     int y = e.getY();
                     for (Polygon poly : polygons) { // hledání polygonu obsahujícího bod kliku
                         if (poly.size() < 3) continue;
                         if (poly.pointInPolygon(x, y)) {
-                            // TODO vyběr mezi floodfill a seedfill a mezi 4mi a 8mi sousedy
-                            SeedFill filler = new SeedFill(panel.getRaster());
-                            filler.seedFill4(x, y, fillColor);
-                            //filler.seedFill8(x, y, fillColor);
-                            panel.repaint(); // nepřepisovat raster vyčištěním vykresleni()
+                            fills.add(new Filling(x, y, fillColor)); // ukladani vykresleni
+                            vykresleni();
                             return;
                         }
                     }
@@ -238,10 +240,11 @@ public class Controller2D implements Controller {
             public void keyPressed(KeyEvent e) {
                 switch (e.getKeyCode()) {
                     case KeyEvent.VK_C -> {
-                        // vymazat vše: body polygonu i uložené úsečky
+                        // vymazat vše: body polygonu, uložené úsečky, výplň
                         polygon.clear();
                         polygons.clear();
                         lines.clear();
+                        fills.clear();
                         draggedLine = null;
                         startPoint = null;
                         endPoint = null;
@@ -309,14 +312,23 @@ public class Controller2D implements Controller {
             lineRasterizer.rasterize(l);
         }
 
-        PolygonRasterizer pr = new PolygonRasterizer(lineRasterizer);
-        for (Polygon poly : polygons) { // vykreslení všech uložených polygonů (body)
+        PolygonRasterizer pr = new PolygonRasterizer(lineRasterizer); // vykreslení všech uložených polygonů
+        for (Polygon poly : polygons) {
             pr.rasterize(poly, true); // vykreslení bodů polygonu
         }
         pr.rasterize(polygon, false); // aktuální polygon (body, neuzavřený)
 
-        if (draggedLine != null) {
-            if (polygon.size() == 0) { // tvoření normální pružné úsečky
+        if (!fills.isEmpty()) { // vykreslení výplní
+            SeedFill filler = new SeedFill(panel.getRaster());
+            for (Filling f : fills) {
+                // TODO výběr mezi FloodFill a SeedFill a mezi 4mi a 8mi sousedy
+                filler.seedFill4(f.x, f.y, f.color);
+                //filler.seedFill8(f.x, f.y, f.color);
+            }
+        }
+
+        if (draggedLine != null) { // tvoření normální pružné úsečky
+            if (polygon.size() == 0) {
                 (colorfull ? lineRasterizerColorful : lineRasterizer).rasterize(draggedLine);
             } else {
                 Point2D firstPolyToPruz = polygon.size() > 0 ? polygon.getFirst() : startPoint;
