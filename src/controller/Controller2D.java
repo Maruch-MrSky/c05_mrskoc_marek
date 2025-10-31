@@ -8,11 +8,15 @@ import java.util.List;
 import model.objectdata.Line;
 import model.objectdata.Point2D;
 import model.objectdata.Polygon;
-import model.rasterops.rasterizer.LineRasterizerColoredBresenham;
+
 import model.rasterops.rasterizer.LineRasterizer;
-import model.rasterops.rasterizer.LineRasterizerBresenham;
 //import model.rasterops.rasterizer.LineRasterizerTrivial;
+import model.rasterops.rasterizer.LineRasterizerBresenham;
+import model.rasterops.rasterizer.LineRasterizerColoredBresenham;
 import model.rasterops.rasterizer.PolygonRasterizer;
+
+import model.rasterops.filler.SeedFill;
+import model.rasterops.filler.FloodFill;
 
 import view.Panel;
 
@@ -22,6 +26,7 @@ public class Controller2D implements Controller {
     private Point2D startPoint;
     private Point2D endPoint;
     private Line draggedLine;
+    private Color fillColor = Color.GREEN; // barva vyplněni
 
     private final List<Line> lines = new ArrayList<>();
     private final List<Polygon> polygons = new ArrayList<>();
@@ -31,6 +36,7 @@ public class Controller2D implements Controller {
     private int grabbedPoint = -1; // index přesunovaného vrcholu polygonu, -1 = nic
     private int grabbedPolygon = -1; // index přesunovaného polygonu, -1 = nic
 
+
     private boolean shifted = false;
     private boolean colorfull = false; // odmítám, tahle blbost mě připraví o nervy
 
@@ -39,6 +45,8 @@ public class Controller2D implements Controller {
         //this.lineRasterizer = new LineRasterizerTrivial(panel.getRaster());
         this.lineRasterizer = new LineRasterizerBresenham(panel.getRaster());
         this.lineRasterizerColorful = new LineRasterizerColoredBresenham(panel.getRaster());
+        //this.filler = new FloodFill();
+        //this.filler = new SeedFill();
         initObjects();
         initListeners(panel);
     }
@@ -55,7 +63,11 @@ public class Controller2D implements Controller {
             @Override
             public void mousePressed(MouseEvent e) {
                 Point2D clickPoint = new Point2D(e.getX(), e.getY());
-                if (e.getButton() == MouseEvent.BUTTON3) { // pravé tlačítko
+                // reset grabu při novém kliknutí
+                grabbedPoint = -1;
+                grabbedPolygon = -1;
+                if (javax.swing.SwingUtilities.isRightMouseButton(e) || e.isPopupTrigger()) { // pravé tlačítko
+                    // přesunovaní vrcholu polygonu
                     if (polygon.findNearestPoint(clickPoint) != -1 && polygon.getItem(polygon.findNearestPoint(clickPoint)).distanceTo(clickPoint) <= 10) { // hledání v aktuálním polygonu
                         grabbedPolygon = -2; // aktuální polygon
                         grabbedPoint = polygon.findNearestPoint(clickPoint);
@@ -70,12 +82,28 @@ public class Controller2D implements Controller {
                             return;
                         }
                     }
+                    // vyplňování polygonu
+                    int x = e.getX();
+                    int y = e.getY();
+                    for (Polygon poly : polygons) { // hledání polygonu obsahujícího bod kliku
+                        if (poly.size() < 3) continue;
+                        if (poly.pointInPolygon(x, y)) {
+                            // TODO vyběr mezi floodfill a seedfill a mezi 4mi a 8mi sousedy
+                            SeedFill filler = new SeedFill(panel.getRaster());
+                            filler.seedFill4(x, y, fillColor);
+                            //filler.seedFill8(x, y, fillColor);
+                            panel.repaint(); // nepřepisovat raster vyčištěním vykresleni()
+                            return;
+                        }
+                    }
+
                 } else if (e.getButton() == MouseEvent.BUTTON1) { // levé tlačítko
                     if (polygon.size() == 0) {
                         startPoint = new Point2D(e.getX(), e.getY());
                     } else {
                         startPoint = polygon.getLast();
                     }
+
                 } else if (e.getButton() == MouseEvent.BUTTON2) { // prostřední tlačítko
                     for (Polygon poly : polygons) {
                         if (poly.size() < 2) continue;
@@ -114,30 +142,31 @@ public class Controller2D implements Controller {
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                if (startPoint == null) return;
                 grabbedPoint = -1;
                 grabbedPolygon = -1;
-                if (startPoint == null) return;
+                int color; // fix přetejkání když se použije draggedLine v novém polygonu
 
                 Point2D newPoint;
                 if (draggedLine != null) {
                     newPoint = draggedLine.getEnd();
+                    color = draggedLine.getColor();
                 } else {
                     newPoint = new Point2D(e.getX(), e.getY());
+                    color = 0xffffff;
                 }
-
                 if (polygon.size() == 0) {
                     if (startPoint != null) {
                         endPoint = newPoint;
                         polygon.addItem(startPoint);
                         polygon.addItem(endPoint);
-                        lines.add(new Line(startPoint, endPoint, draggedLine.getColor()));
+                        lines.add(new Line(startPoint, endPoint, color));
                     }
                 } else {
                     Point2D first = polygon.getFirst();
                     double dx = newPoint.getX() - first.getX();
                     double dy = newPoint.getY() - first.getY();
                     double distance = Math.sqrt(dx * dx + dy * dy);
-                    int color = draggedLine != null ? draggedLine.getColor() : 0xffffff;
                     // klik blízko počátku ukončuje polygon
                     if (distance < 7) { // tolerance 7 pixelů
                         if (polygon.size() > 0) {

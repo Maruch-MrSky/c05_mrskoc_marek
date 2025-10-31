@@ -6,6 +6,7 @@ import model.rasterops.rasterizer.LineRasterizer;
 import model.rasterops.rasterizer.PolygonRasterizer;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class ScanLine {
@@ -21,38 +22,57 @@ public class ScanLine {
     }
 
     public void fill() {
-        // 1. časť
         List<Line> edges = new ArrayList<>();
+        int n = poly.size();
+        for (int i = 0; i < n; i++) {
+            var p1 = poly.getItem(i);
+            var p2 = poly.getItem((i + 1) % n);
+            Line edge = new Line(p1.getX(), p1.getY(), p2.getX(), p2.getY());
+            if (!edge.isHorizontal()) {
+                edge.orientate(); // zajistí správnou orientaci (minY -> maxY)
+                edges.add(edge);
+            }
+        }
 
-        // for iterujem cez polygon
+        if (edges.isEmpty()) {
+            // nic k vyplnění
+            //polyLiner.rasterize(poly);
+            return;
+        }
 
-        // if edge !isHorizontal()
-        // edge.orientate()
-        // pridam do zoznamu edges
+        // 1b. nalezení yMin a yMax
+        int yMin = Integer.MAX_VALUE;
+        int yMax = Integer.MIN_VALUE;
+        for (int i = 0; i < n; i++) {
+            int y = poly.getItem(i).getY();
+            if (y < yMin) yMin = y;
+            if (y > yMax) yMax = y;
+        }
 
-        // v tomto momente je vytvoreny zoznam hran daneho polygonu
+        // 2. scanline: pro každý y spočítat průsečíky, seřadit a vykreslit úsečky mezi páry
+        for (int y = yMin; y <= yMax; y++) {
+            List<Double> intersections = new ArrayList<>();
+            for (Line e : edges) {
+                // standardní test: zahrnout hrany, kde y je v intervalu [yMin, yMax)
+                if (e.getYmin() <= y && y < e.getYmax()) {
+                    double ix = e.getIntersection(y);
+                    intersections.add(ix);
+                }
+            }
 
-        int yMin, yMax;
-        // yMin = poly.get(0).getY()
-        // yMax porovnavam postupne s ostatnymi = cyklus
+            if (intersections.isEmpty()) continue;
 
-        // 2. časť
-        // for loop iteruj od yMin po yMax
-        // vytvorit zoznam pro prusecniky
+            Collections.sort(intersections);
 
-        // iteruj zoznamom hran
-        // existuje prusecnik? = intersectionExists
-        // pokial ano, spocitam ho getIntersection(int y)
-        // ulozim do zoznamu pre prusecniky
-
-        // zoradenie priesecnikov lubovolnym algoritmom
-
-        // vezmem jednotlive priesecniky a vykreslujem medzi nimi usecku
-        // vykreslujem medzi kazdym lichym a sudym
-
-        // konec cyklu
-
-        // obtiahnem hranicu polygonu
-
+            // vykreslit mezi každým lichým a sudým průsečíkem
+            for (int i = 0; i + 1 < intersections.size(); i += 2) {
+                int x1 = (int) Math.ceil(intersections.get(i));
+                int x2 = (int) Math.floor(intersections.get(i + 1));
+                if (x1 <= x2) {
+                    Line span = new Line(x1, y, x2, y);
+                    liner.rasterize(span);
+                }
+            }
+        }
     }
 }

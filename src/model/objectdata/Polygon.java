@@ -18,21 +18,18 @@ public class Polygon {
         return polygon.size();
     }
 
-    // done TODO addItemToIndex getFirst, getLast, clear
     public void addItemToIndex(int index, Point2D newItem) {
         if (index >= 0 && index <= polygon.size()) {
             polygon.add(index, newItem);
         }
     }
 
-    // done TODO removeItem
     public void removeItem(int index) {
-        if (index >= 0 && index <= polygon.size()) {
+        if (index >= 0 && index < polygon.size()) {
             polygon.remove(index);
         }
     }
 
-    // done TODO getItem
     public Point2D getItem(int index) {
         if (index >= 0 && index < polygon.size()) {
             return polygon.get(index);
@@ -40,7 +37,6 @@ public class Polygon {
         return null;
     }
 
-    // done TODO getFisrt
     public Point2D getFirst() {
         if (polygon.size() > 0) {
             return getItem(0);
@@ -48,7 +44,6 @@ public class Polygon {
         return null;
     }
 
-    // done TODO getLast
     public Point2D getLast() {
         if (polygon.size() > 0) {
             return getItem(polygon.size() - 1);
@@ -56,30 +51,45 @@ public class Polygon {
         return null;
     }
 
-    // done TODO creal
     public void clear() {
         polygon.clear();
     }
 
-    // done TODO findNearestPoint
-    public int findNearestPoint(Point2D point) {
-        if (polygon.size() > 0) {
-            int nearestIndex = 0;
-            double minDistance = polygon.get(0).distanceTo(point);
-            for (int i = 1; i < polygon.size(); i++) {
-                double distance = polygon.get(i).distanceTo(point);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nearestIndex = i;
-                }
-            }
-            return nearestIndex;
-        } else {
-            return -1;
+    public boolean pointInPolygon(int x, int y) {
+        boolean inside = false;
+        int n = size();
+        if (n < 3) return false;
+        for (int i = 0, j = n - 1; i < n; j = i++) {
+            Point2D pi = getItem(i);
+            Point2D pj = getItem(j);
+            double xi = pi.getX(), yi = pi.getY();
+            double xj = pj.getX(), yj = pj.getY();
+            boolean intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi + 0.0) + xi);
+            if (intersect) inside = !inside; // sudost křížení hran
         }
+        return inside;
     }
 
-    // done TODO list všech bodů
+    public boolean pointInPolygon(Point2D point) {
+        return pointInPolygon(point.getX(), point.getY());
+    }
+
+    public int findNearestPoint(Point2D point) {
+        if (polygon.isEmpty()) {
+            return -1;
+        }
+        int nearestPolyIndex = 0;
+        double minDistance = polygon.get(0).distanceTo(point);
+        for (int i = 1; i < polygon.size(); i++) {
+            double distance = polygon.get(i).distanceTo(point);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestPolyIndex = i;
+            }
+        }
+        return nearestPolyIndex;
+    }
+
     public ArrayList<Point2D> getPolygon() {
         return new ArrayList<>(polygon);
     }

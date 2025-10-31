@@ -1,5 +1,16 @@
 package model.rasterops.filler;
 
+import model.rasterdata.Raster;
+
+import java.awt.*;
+
 public class FloodFill {
-    // TODO implement flood fill algorithm
+
+//    @Override
+//    public void fill(int x, int y, Color fillColor) {
+//        floodFill(x, y, fillColor);
+//    }
+//
+//    private void floodFill(int x, int y, Color fillColor) {
+//    }
 }
