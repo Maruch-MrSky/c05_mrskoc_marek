@@ -78,16 +78,16 @@ public class Polygon {
         if (polygon.isEmpty()) {
             return -1;
         }
-        int nearestPolyIndex = 0;
+        int nearestIndex = 0;
         double minDistance = polygon.get(0).distanceTo(point);
         for (int i = 1; i < polygon.size(); i++) {
             double distance = polygon.get(i).distanceTo(point);
             if (distance < minDistance) {
                 minDistance = distance;
-                nearestPolyIndex = i;
+                nearestIndex = i;
             }
         }
-        return nearestPolyIndex;
+        return nearestIndex;
     }
 
     public ArrayList<Point2D> getPolygon() {
