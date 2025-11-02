@@ -27,19 +27,16 @@ public class RasterBI implements Raster {
 
     @Override
     public int getWidth() {
-        // TODO
         return img.getWidth();
     }
 
     @Override
     public int getHeight() {
-        // TODO
         return img.getHeight();
     }
 
     @Override
     public int getPixel(int x, int y) {
-        // TODO
         if (x < 0 || y < 0 || x >= img.getWidth() || y >= img.getHeight()) {
             return 0; //pixel mimo plátno! vrací černou
         }
@@ -48,7 +45,6 @@ public class RasterBI implements Raster {
 
     @Override
     public void setPixel(int x, int y, int color) {
-        // TODO
         if (x >= 0 && y >= 0 && x < img.getWidth() && y < img.getHeight()) {
             img.setRGB(x, y, color); //pixel je na plátnu, jinak nedělá nic
         }

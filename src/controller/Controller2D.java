@@ -39,11 +39,17 @@ public class Controller2D implements Controller {
 
     private boolean shifted = false;
     private boolean colorfull = false; // odmítám, tahle blbost mě připraví o nervy
+    private boolean rectangle = false;
 
     private static class Filling {
         final int x, y;
         final Color color;
-        Filling(int x, int y, Color color) { this.x = x; this.y = y; this.color = color; }
+
+        Filling(int x, int y, Color color) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+        }
     }
 
     public Controller2D(Panel panel) {
@@ -228,6 +234,23 @@ public class Controller2D implements Controller {
                             y2 = (int) Math.round(startPoint.getY()) + (dy >= 0 ? diagonala : -diagonala);
                         }
                     }
+                    if (rectangle && polygon.size() == 0) {
+                        if (shifted) {
+                            int dx = x2 - (int) Math.round(startPoint.getX());
+                            int dy = y2 - (int) Math.round(startPoint.getY());
+                            if (Math.abs(dx) > Math.abs(dy) * 2) {
+                                y2 = (int) Math.round(startPoint.getY()); // horizontální úsečka
+                            } else if (Math.abs(dx) * 2 < Math.abs(dy)) {
+                                x2 = (int) Math.round(startPoint.getX()); // vertikální úsečka
+                            } else {
+                                int diagonala = (Math.abs(dx) > Math.abs(dy)) ? Math.abs(dx) : Math.abs(dy); // diagonální úsečka
+                                x2 = (int) Math.round(startPoint.getX()) + (dx >= 0 ? diagonala : -diagonala);
+                                y2 = (int) Math.round(startPoint.getY()) + (dy >= 0 ? diagonala : -diagonala);
+                            }
+                        } else {
+                            x2 = (int) Math.round(startPoint.getX());
+                        }
+                    }
                     endPoint = new Point2D(x2, y2);
                     draggedLine = new Line(startPoint, endPoint, 0xffffff);
                     vykresleni();
@@ -239,6 +262,22 @@ public class Controller2D implements Controller {
             @Override
             public void keyPressed(KeyEvent e) {
                 switch (e.getKeyCode()) {
+                    case KeyEvent.VK_SHIFT -> {
+                        shifted = true;
+                    }
+                    case KeyEvent.VK_X -> {
+                        if (polygon.size() > 0) { // maže pouze bod
+                            int lastIndex = polygon.size() - 1;
+                            if (polygon.size() > 1) { // maže úsečky s tímto bodem spojenou
+                                Point2D last = polygon.getItem(lastIndex);
+                                Point2D prev = polygon.getItem(lastIndex - 1);
+                                lines.removeIf(line -> (line.getStart().equals(prev) && line.getEnd().equals(last)) || (line.getStart().equals(last) && line.getEnd().equals(prev))
+                                );
+                            }
+                            polygon.removeItem(lastIndex);
+                            vykresleni();
+                        }
+                    }
                     case KeyEvent.VK_C -> {
                         // vymazat vše: body polygonu, uložené úsečky, výplň
                         polygon.clear();
@@ -258,22 +297,22 @@ public class Controller2D implements Controller {
                         vykresleni();
                     }
                     case KeyEvent.VK_B -> {
-                        // TODO po stisku B se vykreslí úsečka s lineárním přechodem dvou barev
+                        // notTODO po stisku B se vykreslí úsečka s lineárním přechodem dvou barev
                         colorfull = !colorfull;
                     }
-                    case KeyEvent.VK_SHIFT -> {
-                        shifted = true;
+                    case KeyEvent.VK_N -> {
+                        rectangle = !rectangle;
                     }
-                    case KeyEvent.VK_X -> {
-                        if (polygon.size() > 0) { // maže pouze bod
-                            int lastIndex = polygon.size() - 1;
-                            if (polygon.size() > 1) { // maže úsečky s tímto bodem spojenou
-                                Point2D last = polygon.getItem(lastIndex);
-                                Point2D prev = polygon.getItem(lastIndex - 1);
-                                lines.removeIf(line -> (line.getStart().equals(prev) && line.getEnd().equals(last)) || (line.getStart().equals(last) && line.getEnd().equals(prev))
-                                );
-                            }
-                            polygon.removeItem(lastIndex);
+                    case KeyEvent.VK_ENTER -> { // dokončení polygonu
+                        if (polygon.size() > 2) {
+                            Point2D first = polygon.getFirst();
+                            Point2D last = polygon.getLast();
+                            lines.add(new Line(last, first, 0xffffff));
+                            polygons.add(polygon); // uložení polygonu
+                            polygon = new Polygon(); // nový polygon
+                            startPoint = null;
+                            endPoint = null;
+                            draggedLine = null;
                             vykresleni();
                         }
                     }
