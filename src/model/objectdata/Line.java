@@ -80,5 +80,16 @@ public class Line {
         return start.getX() + (double)(y - start.getY()) * (end.getX() - start.getX()) / (end.getY() - start.getY());
     }
 
+    // TODO isInside metoda
+    public boolean isInside(Point2D point) {
+        // 1. tečný vektor
+
+        // 2. normálový vektor
+
+        // 3. vektor od startu hrany k bodu point
+
+        return true;
+    }
+
 
 }

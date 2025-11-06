@@ -205,6 +205,7 @@ public class Controller2D implements Controller {
         panel.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
+                // TODO logika kreslení Rectangle (přidat třídu Rectangle a RectangleRasterizer)
                 if (grabbedPoint != -1) {
                     if (grabbedPolygon == -2) { // aktuální polygon
                         Point2D p = polygon.getItem(grabbedPoint);
@@ -232,23 +233,6 @@ public class Controller2D implements Controller {
                             int diagonala = (Math.abs(dx) > Math.abs(dy)) ? Math.abs(dx) : Math.abs(dy); // diagonální úsečka
                             x2 = (int) Math.round(startPoint.getX()) + (dx >= 0 ? diagonala : -diagonala);
                             y2 = (int) Math.round(startPoint.getY()) + (dy >= 0 ? diagonala : -diagonala);
-                        }
-                    }
-                    if (rectangle && polygon.size() == 0) {
-                        if (shifted) {
-                            int dx = x2 - (int) Math.round(startPoint.getX());
-                            int dy = y2 - (int) Math.round(startPoint.getY());
-                            if (Math.abs(dx) > Math.abs(dy) * 2) {
-                                y2 = (int) Math.round(startPoint.getY()); // horizontální úsečka
-                            } else if (Math.abs(dx) * 2 < Math.abs(dy)) {
-                                x2 = (int) Math.round(startPoint.getX()); // vertikální úsečka
-                            } else {
-                                int diagonala = (Math.abs(dx) > Math.abs(dy)) ? Math.abs(dx) : Math.abs(dy); // diagonální úsečka
-                                x2 = (int) Math.round(startPoint.getX()) + (dx >= 0 ? diagonala : -diagonala);
-                                y2 = (int) Math.round(startPoint.getY()) + (dy >= 0 ? diagonala : -diagonala);
-                            }
-                        } else {
-                            x2 = (int) Math.round(startPoint.getX());
                         }
                     }
                     endPoint = new Point2D(x2, y2);
