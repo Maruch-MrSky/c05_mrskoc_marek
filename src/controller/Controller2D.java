@@ -46,6 +46,7 @@ public class Controller2D implements Controller {
     private boolean colorfull = false; // odmítám, tahle blbost mě připraví o nervy
     private boolean rezimRectangle = false;
     private boolean usingScanline = false;
+    private boolean clipperPoly = false;
 
     private static class Filling {
         final int x, y;
@@ -85,23 +86,26 @@ public class Controller2D implements Controller {
                 grabbedPoint = -1;
                 grabbedPolygon = -1;
                 if (javax.swing.SwingUtilities.isRightMouseButton(e) || e.isPopupTrigger()) { // pravé tlačítko
-                    // přesunovaní vrcholu polygonu
-                    if (polygon.findNearestPoint(clickPoint) != -1 && polygon.getItem(polygon.findNearestPoint(clickPoint)).distanceTo(clickPoint) <= 10) { // hledání v aktuálním polygonu
+                    // přesunovaní vrcholu aktuálního polygonu
+                    if (polygon.findNearestPoint(clickPoint) != -1 && polygon.getItem(polygon.findNearestPoint(clickPoint)).distanceTo(clickPoint) <= 10) { // hledání bodu v aktuálním polygonu s tolerancí 10 pixelů
                         grabbedPolygon = -2; // aktuální polygon
                         grabbedPoint = polygon.findNearestPoint(clickPoint);
                         return;
                     }
-                    for (int i = 0; i < polygons.size(); i++) { // hledání v ostatních polygonech
+                    // přesunovaní vrcholu uložených polygonů
+                    for (int i = 0; i < polygons.size(); i++) { // hledání bodu v ostatních polygonech
                         Polygon poly = polygons.get(i);
                         int nearest = poly.findNearestPoint(clickPoint);
-                        if (nearest != -1 && poly.getItem(nearest).distanceTo(clickPoint) <= 10) {
+                        if (nearest != -1 && poly.getItem(nearest).distanceTo(clickPoint) <= 10) { // tolerance 10 pixelů
                             grabbedPolygon = i;
                             grabbedPoint = nearest;
                             return;
                         }
                     }
+                    // seedfill
                     int x = e.getX();
                     int y = e.getY();
+                    // s nutností kliknout do polygonu
 //                    for (Polygon poly : polygons) { // hledání polygonu obsahujícího bod kliku
 //                        if (poly.size() < 3) continue;
 //                        if (poly.pointInPolygon(x, y)) {
@@ -110,7 +114,7 @@ public class Controller2D implements Controller {
 //                            return;
 //                        }
 //                    }
-                    // seedfill bez nutnosti kliknout do polygonu
+                    // seedfill odkudkoliv
                     fills.add(new Filling(x, y, seedFillColor));
                     vykresleni();
                     return;
@@ -173,7 +177,7 @@ public class Controller2D implements Controller {
                                 projection = proj;
                             }
                         }
-                        if (minDist <= 10) { // tolerance 10 pixelů
+                        if (minDist <= 10) { // tolerance 10 pixelů od hrany
                             poly.addItemToIndex(insertIndex, projection);
                             Point2D a = poly.getItem((insertIndex - 1 + poly.size()) % poly.size());
                             Point2D b = poly.getItem((insertIndex + 1) % poly.size());
@@ -183,7 +187,6 @@ public class Controller2D implements Controller {
                             );
                             lines.add(new Line(a, projection, 0xffffff));
                             lines.add(new Line(projection, b, 0xffffff));
-
                             vykresleni();
                             return;
                         }
