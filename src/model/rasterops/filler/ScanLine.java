@@ -29,7 +29,7 @@ public class ScanLine {
 
     private void fillPolygon(Polygon poly, Color color) {
         if (poly == null || poly.size() < 3) return;
-
+        // nalezení rozsahu Y
         double minY = Double.POSITIVE_INFINITY;
         double maxY = Double.NEGATIVE_INFINITY;
         for (int i = 0; i < poly.size(); i++) {
@@ -37,11 +37,12 @@ public class ScanLine {
             if (y < minY) minY = y;
             if (y > maxY) maxY = y;
         }
-
+        // sken horizontálních řádků
         int yStart = (int) Math.floor(minY);
         int yEnd = (int) Math.ceil(maxY);
         int rgb = color.getRGB();
 
+        // pro každý řádek zjistit průsečíky s polygonem
         for (int y = yStart; y < yEnd; y++) {
             double scanY = y + 0.5; // horizontála uprostřed pixelu
             List<Double> intersections = new ArrayList<>();
@@ -52,26 +53,22 @@ public class ScanLine {
                 Point2D b = poly.getItem((i + 1) % n);
 
                 Line edge = new Line(a, b);
+                // přeskočit horizontální hrany
                 if (edge.isHorizontal()) continue;
 
                 double ay = a.getY();
                 double by = b.getY();
-
                 double yMin = Math.min(ay, by);
                 double yMax = Math.max(ay, by);
 
                 // pravidlo [yMin, yMax) aby se nevyskytovalo dvojí počítání vrcholů
                 if (scanY >= yMin && scanY < yMax) {
-                    try {
-                        double ix = edge.getIntersection(scanY);
-                        intersections.add(ix);
-                    } catch (IllegalArgumentException ignored) {
-                        // téměř horizontální, přeskočíno
-                    }
+                    double ix = edge.getIntersection(scanY);
+                    intersections.add(ix);
                 }
             }
-
-            if (intersections.isEmpty()) continue;
+            if (intersections.isEmpty()) continue; // žádné průsečíky
+            // seřadit průsečíky podle x
             Collections.sort(intersections);
 
             // vyplnit intervaly mezi páry průsečíků (even-odd)
@@ -82,7 +79,7 @@ public class ScanLine {
                 int xStart = (int) Math.ceil(left + EPS);
                 int xEnd = (int) Math.floor(right - EPS);
                 if (xEnd < xStart) continue;
-
+                // vyplnit pixely mezi xStart a xEnd
                 for (int x = xStart; x <= xEnd; x++) {
                     try {
                         int existing = raster.getPixel(x, y);

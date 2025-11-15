@@ -14,10 +14,10 @@ import model.objectdata.PolygonClipper;
 import model.rasterops.rasterizer.LineRasterizer;
 import model.rasterops.rasterizer.LineRasterizerBresenham;
 import model.rasterops.rasterizer.LineRasterizerColoredBresenham;
-//import model.rasterops.rasterizer.LineRasterizerTrivial;
+import model.rasterops.rasterizer.LineRasterizerTrivial;
 import model.rasterops.rasterizer.PolygonRasterizer;
 
-//import model.rasterops.filler.FloodFill;
+import model.rasterops.filler.FloodFill;
 import model.rasterops.filler.ScanLine;
 import model.rasterops.filler.SeedFill;
 import model.rasterops.clipper.SutherlandHodgmanCutting;
@@ -30,11 +30,11 @@ public class Controller2D implements Controller {
     private Point2D startPoint;
     private Point2D endPoint;
     private Line draggedLine;
-    private Color seedFillColor = new Color(0x337733); //Color.GREEN; // barva vyplněni SeedFill
-    private Color scanLineColor = new Color(0x0888aa); //Color.CYAN; // barva vyplnění ScanLine
-    private Color clipColor = new Color(0xffd700); //Color.GOLD; // barva ořezávacího polygonu
+    private Color seedFillColor = new Color(0x337733); // barva vyplněni SeedFill
+    private Color scanLineColor = new Color(0x0888aa); // barva vyplnění ScanLine
+    private Color clipColor = new Color(0xffd700); // barva ořezávacího polygonu
     private Polygon polygon = new Polygon();
-    private PolygonClipper clipperPolygon = null; //
+    private PolygonClipper clipperPolygon = null;
 
     private final List<Line> lines = new ArrayList<>();
     private final List<Polygon> polygons = new ArrayList<>();
@@ -43,14 +43,15 @@ public class Controller2D implements Controller {
     private final LineRasterizer lineRasterizer;
     private final LineRasterizerColoredBresenham lineRasterizerColorful;
 
-    private int grabbedPoint = -1; // index přesunovaného vrcholu polygonu, -1 = nic
-    private int grabbedPolygon = -1; // index přesunovaného polygonu, -1 = nic, -2 = aktuální polygon, -3 = clipping polygon
+    private int grabbedPoint = -1; // index přesunovaného vrcholu, -1 = nic
+    private int grabbedPolygon = -1; // index přesunovaného polygonu, -1 = nic, -2 = aktuální polygon, -3 = clipper polygon
 
     private boolean shifted = false;
-    private boolean colorfull = false; // odmítám, tahle blbost mě připraví o nervy
+    private boolean colorfull = false; // neimplementováno
     private boolean rezimRectangle = false;
     private boolean usingScanline = false;
     private boolean clipperPoly = false;
+    private boolean clipReverse = false;
 
     private static class Filling {
         final int x, y;
@@ -68,10 +69,23 @@ public class Controller2D implements Controller {
         //this.lineRasterizer = new LineRasterizerTrivial(panel.getRaster());
         this.lineRasterizer = new LineRasterizerBresenham(panel.getRaster());
         this.lineRasterizerColorful = new LineRasterizerColoredBresenham(panel.getRaster());
-        //this.filler = new FloodFill();
-        //this.filler = new SeedFill();
         initObjects();
         initListeners(panel);
+    }
+
+    // obrácení orientace ořezávacího polygonu
+    private void reverseClipperOrientation() {
+        if (clipperPolygon == null) return;
+        int n = clipperPolygon.size();
+        if (n < 2) return;
+        List<Point2D> pts = new ArrayList<>();
+        for (int i = 0; i < n; i++) pts.add(clipperPolygon.getItem(i));
+        clipperPolygon.clear();
+        for (int i = n - 1; i >= 0; i--) {
+            Point2D p = pts.get(i);
+            clipperPolygon.addItem(new Point2D(p.getX(), p.getY()));
+        }
+        clipperPolygon.validate();
     }
 
     @Override
@@ -89,7 +103,8 @@ public class Controller2D implements Controller {
                 // reset grabu při novém kliknutí
                 grabbedPoint = -1;
                 grabbedPolygon = -1;
-                if (javax.swing.SwingUtilities.isRightMouseButton(e) || e.isPopupTrigger()) { // pravé tlačítko
+// PRAVÉ TLAČÍTKO
+                if (javax.swing.SwingUtilities.isRightMouseButton(e) || e.isPopupTrigger()) {
                     // přesunovaní vrcholu aktuálního polygonu
                     if (polygon.findNearestPoint(clickPoint) != -1 && polygon.getItem(polygon.findNearestPoint(clickPoint)).distanceTo(clickPoint) <= 10) { // hledání bodu v aktuálním polygonu s tolerancí 10 pixelů
                         grabbedPolygon = -2; // aktuální polygon
@@ -120,7 +135,7 @@ public class Controller2D implements Controller {
                     // seedfill
                     int x = e.getX();
                     int y = e.getY();
-                    // s nutností kliknout do polygonu
+//                    // omezení na počátek seedfillu pouze uvnitř polygonu
 //                    for (Polygon poly : polygons) { // hledání polygonu obsahujícího bod kliku
 //                        if (poly.size() < 3) continue;
 //                        if (poly.pointInPolygon(x, y)) {
@@ -129,12 +144,12 @@ public class Controller2D implements Controller {
 //                            return;
 //                        }
 //                    }
-                    // seedfill odkudkoliv
+                    // seedfill bez omezení
                     fills.add(new Filling(x, y, seedFillColor));
                     vykresleni();
                     return;
-
-                } else if (e.getButton() == MouseEvent.BUTTON1) { // levé tlačítko
+// LEVÉ TLAČÍTKO
+                } else if (e.getButton() == MouseEvent.BUTTON1) {
                     // režim obdelníku
                     if (rezimRectangle) {
                         // začátek základny (konec v mouseReleased)
@@ -173,15 +188,15 @@ public class Controller2D implements Controller {
                     } else {
                         startPoint = polygon.getLast();
                     }
-
-                } else if (e.getButton() == MouseEvent.BUTTON2) { // prostřední tlačítko
+// PROSTŘEDNÍ TLAČÍTKO (kolečko myši)
+                } else if (e.getButton() == MouseEvent.BUTTON2) {
+                    // přidání vrcholu do nejbližší hrany uložených polygonů
                     for (Polygon poly : polygons) {
                         if (poly.size() < 2) continue;
                         double minDist = Double.MAX_VALUE;
                         int insertIndex = -1;
                         Point2D projection = null;
-
-                        for (int i = 0; i < poly.size(); i++) {
+                        for (int i = 0; i < poly.size(); i++) { // hledání nejbližší hrany polygonu
                             Point2D a = poly.getItem(i);
                             Point2D b = poly.getItem((i + 1) % poly.size());
                             Point2D proj = projectPointOnLineSegment(a, b, clickPoint);
@@ -192,13 +207,14 @@ public class Controller2D implements Controller {
                                 projection = proj;
                             }
                         }
+                        // vložení nového vrcholu, pokud je blízko hrany
                         if (minDist <= 10) { // tolerance 10 pixelů od hrany
                             poly.addItemToIndex(insertIndex, projection);
                             Point2D a = poly.getItem((insertIndex - 1 + poly.size()) % poly.size());
                             Point2D b = poly.getItem((insertIndex + 1) % poly.size());
+                            // odstranění staré hrany
                             lines.removeIf(line ->
-                                    (line.getStart().equals(a) && line.getEnd().equals(b)) ||
-                                            (line.getStart().equals(b) && line.getEnd().equals(a))
+                                    (line.getStart().equals(a) && line.getEnd().equals(b)) || (line.getStart().equals(b) && line.getEnd().equals(a))
                             );
                             lines.add(new Line(a, projection, 0xffffff));
                             lines.add(new Line(projection, b, 0xffffff));
@@ -248,7 +264,7 @@ public class Controller2D implements Controller {
                     double dy = newPoint.getY() - first.getY();
                     double distance = Math.sqrt(dx * dx + dy * dy);
                     // klik blízko počátku ukončuje polygon
-                    if (distance < 7) { // tolerance 7 pixelů
+                    if (distance < 10) { // tolerance 10 pixelů
                         if (polygon.size() > 0) {
                             Point2D last = polygon.getLast();
                             lines.add(new Line(last, first, color));
@@ -302,7 +318,7 @@ public class Controller2D implements Controller {
                 if (startPoint != null) {
                     int x2 = e.getX();
                     int y2 = e.getY();
-
+                    // úsečka chytaná na vertikály/horizontály/diagonály
                     if (shifted) {
                         int dx = x2 - (int) Math.round(startPoint.getX());
                         int dy = y2 - (int) Math.round(startPoint.getY());
@@ -327,9 +343,11 @@ public class Controller2D implements Controller {
             @Override
             public void keyPressed(KeyEvent e) {
                 switch (e.getKeyCode()) {
+// SHIFT - chytání úseček na vertikály/horizontály/diagonály
                     case KeyEvent.VK_SHIFT -> {
                         shifted = true;
                     }
+// X - smazat poslední bod aktuálního polygonu
                     case KeyEvent.VK_X -> {
                         if (polygon.size() > 0) { // maže pouze bod
                             int lastIndex = polygon.size() - 1;
@@ -343,29 +361,41 @@ public class Controller2D implements Controller {
                             vykresleni();
                         }
                     }
+// C - vymazat vše
                     case KeyEvent.VK_C -> {
-                        // vymazat vše: body polygonu, uložené úsečky, výplně
+                        // reset všech objektů
                         polygon.clear();
                         polygons.clear();
                         lines.clear();
                         fills.clear();
+                        // reset režimů
+                        colorfull = false;
+                        rezimRectangle = false;
+                        usingScanline = false;
+                        clipperPoly = false;
+                        clipReverse = false;
+                        // reset pomocných proměnných
                         draggedLine = null;
                         startPoint = null;
                         endPoint = null;
                         clipperPolygon = null;
+                        // vykreslení prázdného plátna
                         panel.getRaster().clear();
                         panel.repaint();
                     }
+// V - zrušit ntaženou úsečku
                     case KeyEvent.VK_V -> {
                         draggedLine = null;
                         startPoint = null;
                         endPoint = null;
                         vykresleni();
                     }
+// B - přepnout barevný režim (Neimplementováno)
                     case KeyEvent.VK_B -> {
                         // notTODO po stisku B se vykreslí úsečka s lineárním přechodem dvou barev
                         colorfull = !colorfull;
                     }
+// D - přepínání režimu obdélníku
                     case KeyEvent.VK_D -> {
                         rezimRectangle = !rezimRectangle;
                         // při přepnutí režimu zrušíme nedokončený obdélník
@@ -374,10 +404,12 @@ public class Controller2D implements Controller {
                         draggedLine = null;
                         vykresleni();
                     }
+// F - přepínání ScanLine a SeedFill
                     case KeyEvent.VK_F -> {
                         usingScanline = !usingScanline;
                         vykresleni();
                     }
+// G - vytvoření ořezávacího polygonu
                     case KeyEvent.VK_G -> {
                         Point mouse = panel.getMousePosition();
                         double cx, cy;
@@ -393,7 +425,13 @@ public class Controller2D implements Controller {
                         clipperPolygon.validate();
                         vykresleni();
                     }
-                    case KeyEvent.VK_ENTER -> { // dokončení polygonu
+// H - obrácení orientace ořezávacího polygonu
+                    case KeyEvent.VK_H -> {
+                        clipReverse = !clipReverse;
+                        vykresleni();
+                    }
+// ENTER - dokončení aktuálního polygonu
+                    case KeyEvent.VK_ENTER -> {
                         if (polygon.size() > 1) {
                             if (polygon.size() > 2) {
                                 Point2D last = polygon.getLast();
@@ -413,22 +451,24 @@ public class Controller2D implements Controller {
 
             @Override
             public void keyReleased(KeyEvent e) {
+                // SHIFT je aktivní pouze při držení
                 if (e.getKeyCode() == KeyEvent.VK_SHIFT) {
                     shifted = false;
                 }
             }
         });
-        panel.setFocusable(true);   // fokus panelu na klavesnici
+        // fokus panelu na klavesnici
+        panel.setFocusable(true);
         panel.requestFocusInWindow();
     }
 
+    // projekce bodu na úsečku (přidávání vrcholů na hrany)
     private Point2D projectPointOnLineSegment(Point2D a, Point2D b, Point2D clickPoint) {
         double ax = a.getX(), ay = a.getY();
         double bx = b.getX(), by = b.getY();
         double clickPointX = clickPoint.getX(), clickPointY = clickPoint.getY();
         double dx = bx - ax;
         double dy = by - ay;
-
         if (dx == 0 && dy == 0) {
             return new Point2D(ax, ay); // hrana je bod
         }
@@ -437,18 +477,22 @@ public class Controller2D implements Controller {
         return new Point2D(ax + t * dx, ay + t * dy);
     }
 
+    // vykreslování objektů, fillů a pružné úsečky
     private void vykresleni() {
         panel.getRaster().clear();
         for (Line l : lines) { // vykreslení všech úseček
             lineRasterizer.rasterize(l);
         }
-        PolygonRasterizer pr = new PolygonRasterizer(lineRasterizer); // vykreslení všech uložených polygonů
+        // vykreslení všech uložených polygonů
+        PolygonRasterizer pr = new PolygonRasterizer(lineRasterizer);
+        // vykreslení bodů polygonu
         for (Polygon poly : polygons) {
-            pr.rasterize(poly, true); // vykreslení bodů polygonu
+            pr.rasterize(poly, true);
         }
-        pr.rasterize(polygon, false); // aktuální polygon (body, neuzavřený)
-
-        if (clipperPolygon != null && clipperPolygon.size() >= 2) { // ořezávací polygon
+        // aktuální polygon (neuzavřený)
+        pr.rasterize(polygon, false);
+        // ořezávací polygon
+        if (clipperPolygon != null && clipperPolygon.size() >= 2) {
             for (int i = 0; i < clipperPolygon.size(); i++) {
                 Point2D a = clipperPolygon.getItem(i);
                 Point2D b = clipperPolygon.getItem((i + 1) % clipperPolygon.size());
@@ -460,14 +504,30 @@ public class Controller2D implements Controller {
         if (usingScanline) { // ScanLine
             ScanLine scanLineFilling = new ScanLine(panel.getRaster());
             if (clipperPolygon != null && clipperPolygon.isValid()) {
+                // ořezávání polygonů
                 SutherlandHodgmanCutting cutter = new SutherlandHodgmanCutting();
-                List<Polygon> clipped = new ArrayList<>();
-                for (Polygon p : polygons) {
-                    Polygon c = cutter.cut(p, clipperPolygon);
-                    if (c != null && c.size() >= 3) clipped.add(c);
+                if (!clipReverse) {
+                    // průnik
+                    List<Polygon> clipped = new ArrayList<>();
+                    for (Polygon p : polygons) {
+                        Polygon c = cutter.cut(p, clipperPolygon);
+                        if (c != null && c.size() >= 3) clipped.add(c);
+                    }
+                    scanLineFilling.fillAll(clipped, scanLineColor);
+                } else {
+                    // rozdíl
+                    scanLineFilling.fillAll(polygons, scanLineColor);
+                    List<Polygon> clipped = new ArrayList<>();
+                    for (Polygon p : polygons) {
+                        Polygon c = cutter.cut(p, clipperPolygon);
+                        if (c != null && c.size() >= 3) clipped.add(c);
+                    }
+                    // vyplnění barvou pozadí
+                    scanLineFilling.fillAll(clipped, panel.getBackground());
                 }
-                scanLineFilling.fillAll(clipped, scanLineColor);
+
             } else {
+                // bez ořezávacího polygonu
                 scanLineFilling.fillAll(polygons, scanLineColor);
             }
         } else { // SeedFill
@@ -487,11 +547,13 @@ public class Controller2D implements Controller {
             } else {
                 Point2D firstPolyToPruz = polygon.size() > 0 ? polygon.getFirst() : startPoint;
                 Point2D lastPolyToPruz = polygon.size() > 0 ? polygon.getLast() : startPoint;
+                // úsečka od prvního vrcholu polygonu k pružné úsečce
                 (colorfull ? lineRasterizerColorful : lineRasterizer).rasterize(
                         firstPolyToPruz.getX(), firstPolyToPruz.getY(),
                         draggedLine.getEnd().getX(), draggedLine.getEnd().getY(),
                         Color.WHITE
                 );
+                // úsečka od posledního vrcholu polygonu k pružné úsečce
                 (colorfull ? lineRasterizerColorful : lineRasterizer).rasterize(
                         lastPolyToPruz.getX(), lastPolyToPruz.getY(),
                         draggedLine.getEnd().getX(), draggedLine.getEnd().getY(),

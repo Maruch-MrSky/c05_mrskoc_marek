@@ -15,16 +15,6 @@ public class PolygonClipper extends Polygon {
         }
     }
 
-    public static PolygonClipper fromPolygon(Polygon poly) {
-        PolygonClipper polyClip = new PolygonClipper();
-        if (poly != null) {
-            for (int i = 0; i < poly.size(); i++) {
-                polyClip.addItem(poly.getItem(i));
-            }
-        }
-        return polyClip;
-    }
-
     public void validate() {
         if (size() < 5) {
             throw new IllegalArgumentException("ořezávací polygon musí mít minimálně 5 vrcholů");

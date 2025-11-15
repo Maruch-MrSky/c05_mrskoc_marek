@@ -1,4 +1,3 @@
-// src/model/objectdata/Rectangle.java
 package model.objectdata;
 
 public class Rectangle extends Polygon {

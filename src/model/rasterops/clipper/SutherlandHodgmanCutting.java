@@ -17,37 +17,32 @@ public class SutherlandHodgmanCutting {
 
         List<Point2D> output = subject.getPolygon();
         boolean clipperCCW = polygonSignedArea(clipper) > 0.0;
-
+        // pro každý okraj ořezávacího polygonu
         for (int i = 0; i < clipper.size(); i++) {
             Point2D a = clipper.getItem(i);
             Point2D b = clipper.getItem((i + 1) % clipper.size());
             List<Point2D> input = output;
             output = new ArrayList<>();
-            if (input.isEmpty()) break;
-
+            if (input.isEmpty()) break; // konec, pokud je výstup prázdný
+            // projít všechny hrany vstupního polygonu
             Point2D s = input.get(input.size() - 1);
             for (Point2D e : input) {
                 boolean eInside = isInside(e, a, b, clipperCCW);
                 boolean sInside = isInside(s, a, b, clipperCCW);
-
                 if (sInside && eInside) {
-                    // případ 1: oba uvnitř -> přidat e
                     output.add(e);
                 } else if (sInside && !eInside) {
-                    // případ 2: s uvnitř, e venku -> přidat průsečík
                     Point2D ip = intersect(s, e, a, b);
                     if (ip != null) output.add(ip);
                 } else if (!sInside && eInside) {
-                    // případ 3: s venku, e uvnitř -> přidat průsečík a e
                     Point2D ip = intersect(s, e, a, b);
                     if (ip != null) output.add(ip);
                     output.add(e);
-                }
-                // případ 4: oba venku -> nic
+                } // oba mimo - nic se neděje
                 s = e;
             }
         }
-
+        // sestavení výsledného polygonu
         Polygon result = new Polygon();
         for (Point2D p : output) result.addItem(p);
         return result;
@@ -60,15 +55,13 @@ public class SutherlandHodgmanCutting {
     }
 
     private Point2D intersect(Point2D p1, Point2D p2, Point2D p3, Point2D p4) {
-        // řádky p1->p2 a p3->p4, řeší parametry t,u: p1 + t*(p2-p1) = p3 + u*(p4-p3)
         double x1 = p1.getX(), y1 = p1.getY();
         double x2 = p2.getX(), y2 = p2.getY();
         double x3 = p3.getX(), y3 = p3.getY();
         double x4 = p4.getX(), y4 = p4.getY();
-
+        // výpočet průsečíku dvou přímek (p1,p2) a (p3,p4)
         double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
         if (Math.abs(denom) < EPS) return null; // paralelní nebo téměř
-
         double px = ( (x1*y2 - y1*x2)*(x3 - x4) - (x1 - x2)*(x3*y4 - y3*x4) ) / denom;
         double py = ( (x1*y2 - y1*x2)*(y3 - y4) - (y1 - y2)*(x3*y4 - y3*x4) ) / denom;
 
@@ -78,7 +71,7 @@ public class SutherlandHodgmanCutting {
     private double polygonSignedArea(Polygon poly) {
         double area = 0.0;
         int n = poly.size();
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < n; i++) { // pro každý vrchol
             Point2D a = poly.getItem(i);
             Point2D b = poly.getItem((i + 1) % n);
             area += a.getX() * b.getY() - b.getX() * a.getY();

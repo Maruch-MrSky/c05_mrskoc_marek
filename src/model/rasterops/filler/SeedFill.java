@@ -32,11 +32,9 @@ public class SeedFill {
 
     private void seedFill(int px, int py, Color newColor, boolean eightNeighbours) {
         if (!inBounds(px, py)) return; // bod mimo obrazovku
-        if (img == newColor) return; // polygon už je vyplněný
-
         Color targetColor = new Color(img.getPixel(px, py), true);
-        if (targetColor.equals(newColor)) return;
-
+        if (targetColor.equals(newColor)) return; // polygon už je vyplněný
+        // zásobník
         Stack<Point> stack = new Stack<>();
         stack.push(new Point(px, py));
 
@@ -44,11 +42,10 @@ public class SeedFill {
             Point p = stack.pop();
             int x = p.x;
             int y = p.y;
-
-            if (!inBounds(x, y)) continue;
+            if (!inBounds(x, y)) continue; // bod mimo obrazovku (pro jistotu)
 
             Color current = new Color(img.getPixel(x, y), true);
-            if (!current.equals(targetColor)) continue;
+            if (!current.equals(targetColor)) continue; // bod není cílové barvy
             img.setPixel(x, y, newColor.getRGB());
             // rekurze pro 4 sousedy
             stack.push(new Point(x + 1, y));
