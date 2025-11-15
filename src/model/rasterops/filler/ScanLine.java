@@ -1,76 +1,78 @@
 package model.rasterops.filler;
 
-import model.objectdata.Line;
+import model.objectdata.Point2D;
 import model.objectdata.Polygon;
-import model.rasterops.rasterizer.LineRasterizer;
-import model.rasterops.rasterizer.PolygonRasterizer;
+import model.rasterdata.Raster;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class ScanLine {
+    private final Raster raster;
 
-    private Polygon poly;
-    private LineRasterizer liner;
-    private PolygonRasterizer polyLiner;
-
-    public ScanLine(Polygon poly, LineRasterizer liner, PolygonRasterizer polyLiner) {
-        this.poly = poly;
-        this.liner = liner;
-        this.polyLiner = polyLiner;
+    public ScanLine(Raster raster) {
+        this.raster = raster;
     }
 
-    public void fill() {
-        List<Line> edges = new ArrayList<>();
-        int n = poly.size();
-        for (int i = 0; i < n; i++) {
-            var p1 = poly.getItem(i);
-            var p2 = poly.getItem((i + 1) % n);
-            Line edge = new Line(p1.getX(), p1.getY(), p2.getX(), p2.getY());
-            if (!edge.isHorizontal()) {
-                edge.orientate(); // zajistí správnou orientaci (minY -> maxY)
-                edges.add(edge);
-            }
+    // volaní vyplnění scanline pro všechny polygony
+    public void fillAll(List<Polygon> polygons, Color color) {
+        if (polygons == null) return;
+        for (Polygon p : polygons) {
+            fillPolygon(p, color);
+        }
+    }
+
+    // vyplnění polygonu metodou scanline
+    private void fillPolygon(Polygon poly, Color color) {
+        if (poly == null || poly.size() < 3) return;
+
+        double minY = Double.POSITIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        for (int i = 0; i < poly.size(); i++) {
+            double y = poly.getItem(i).getY();
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
         }
 
-        if (edges.isEmpty()) {
-            // nic k vyplnění
-            //polyLiner.rasterize(poly);
-            return;
-        }
+        int yStart = (int) Math.floor(minY);
+        int yEnd = (int) Math.ceil(maxY);
 
-        // 1b. nalezení yMin a yMax
-        int yMin = Integer.MAX_VALUE;
-        int yMax = Integer.MIN_VALUE;
-        for (int i = 0; i < n; i++) {
-            int y = poly.getItem(i).getY();
-            if (y < yMin) yMin = y;
-            if (y > yMax) yMax = y;
-        }
-
-        // 2. scanline: pro každý y spočítat průsečíky, seřadit a vykreslit úsečky mezi páry
-        for (int y = yMin; y <= yMax; y++) {
+        for (int y = yStart; y < yEnd; y++) {
+            double scanY = y + 0.5; // testovací horizontála uprostřed pixelu
             List<Double> intersections = new ArrayList<>();
-            for (Line e : edges) {
-                // standardní test: zahrnout hrany, kde y je v intervalu [yMin, yMax)
-                if (e.getYmin() <= y && y < e.getYmax()) {
-                    double ix = e.getIntersection(y);
+
+            for (int i = 0; i < poly.size(); i++) {
+                Point2D a = poly.getItem(i);
+                Point2D b = poly.getItem((i + 1) % poly.size());
+                double x1 = a.getX(), y1 = a.getY();
+                double x2 = b.getX(), y2 = b.getY();
+
+                // ignorovat horizontální hrany
+                if (Math.abs(y1 - y2) < 1e-9) continue;
+
+                double yMin = Math.min(y1, y2);
+                double yMax = Math.max(y1, y2);
+
+                // pravidlo [yMin, yMax) - zapobíhá dvojitému počítání vrcholů
+                if (scanY >= yMin && scanY < yMax) {
+                    double t = (scanY - y1) / (y2 - y1);
+                    double ix = x1 + t * (x2 - x1);
                     intersections.add(ix);
                 }
             }
 
             if (intersections.isEmpty()) continue;
-
             Collections.sort(intersections);
 
-            // vykreslit mezi každým lichým a sudým průsečíkem
+            // spojování dvojic průsečíků
             for (int i = 0; i + 1 < intersections.size(); i += 2) {
-                int x1 = (int) Math.ceil(intersections.get(i));
-                int x2 = (int) Math.floor(intersections.get(i + 1));
-                if (x1 <= x2) {
-                    Line span = new Line(x1, y, x2, y);
-                    liner.rasterize(span);
+                int x1 = (int) Math.ceil(intersections.get(i) - 1e-9);
+                int x2 = (int) Math.floor(intersections.get(i + 1) + 1e-9);
+                if (x2 < x1) continue;
+                for (int x = x1; x <= x2; x++) {
+                    raster.setPixel(x, y, color.getRGB());
                 }
             }
         }

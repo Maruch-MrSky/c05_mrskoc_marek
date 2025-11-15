@@ -16,7 +16,8 @@ import model.rasterops.rasterizer.LineRasterizerColoredBresenham;
 import model.rasterops.rasterizer.PolygonRasterizer;
 
 import model.rasterops.filler.SeedFill;
-import model.rasterops.filler.FloodFill;
+//import model.rasterops.filler.FloodFill;
+import model.rasterops.filler.ScanLine;
 
 import view.Panel;
 
@@ -27,19 +28,22 @@ public class Controller2D implements Controller {
     private Point2D endPoint;
     private Line draggedLine;
     private Color fillColor = Color.GREEN; // barva vyplněni
+    private Polygon polygon = new Polygon();
 
     private final List<Line> lines = new ArrayList<>();
     private final List<Polygon> polygons = new ArrayList<>();
     private final List<Filling> fills = new ArrayList<>();
-    private Polygon polygon = new Polygon();
+
     private final LineRasterizer lineRasterizer;
     private final LineRasterizerColoredBresenham lineRasterizerColorful;
+
     private int grabbedPoint = -1; // index přesunovaného vrcholu polygonu, -1 = nic
     private int grabbedPolygon = -1; // index přesunovaného polygonu, -1 = nic
 
     private boolean shifted = false;
     private boolean colorfull = false; // odmítám, tahle blbost mě připraví o nervy
     private boolean rectangle = false;
+    private boolean usingScanline = false;
 
     private static class Filling {
         final int x, y;
@@ -284,8 +288,12 @@ public class Controller2D implements Controller {
                         // notTODO po stisku B se vykreslí úsečka s lineárním přechodem dvou barev
                         colorfull = !colorfull;
                     }
-                    case KeyEvent.VK_N -> {
+                    case KeyEvent.VK_D -> {
                         rectangle = !rectangle;
+                    }
+                    case KeyEvent.VK_F -> {
+                        usingScanline = !usingScanline;
+                        vykresleni();
                     }
                     case KeyEvent.VK_ENTER -> { // dokončení polygonu
                         if (polygon.size() > 2) {
@@ -341,12 +349,18 @@ public class Controller2D implements Controller {
         }
         pr.rasterize(polygon, false); // aktuální polygon (body, neuzavřený)
 
-        if (!fills.isEmpty()) { // vykreslení výplní
-            SeedFill filler = new SeedFill(panel.getRaster());
-            for (Filling f : fills) {
-                // TODO výběr mezi FloodFill a SeedFill a mezi 4mi a 8mi sousedy
-                filler.seedFill4(f.x, f.y, f.color);
-                //filler.seedFill8(f.x, f.y, f.color);
+        // vyplnění polygonů buď ScanLine nebo SEedFill
+        if (usingScanline) { // ScanLine
+            ScanLine slf = new ScanLine(panel.getRaster());
+            slf.fillAll(polygons, fillColor);
+        } else { // SeedFill
+            if (!fills.isEmpty()) {
+                SeedFill filler = new SeedFill(panel.getRaster());
+                for (Filling f : fills) {
+                    // TODO přepínání mezi 4mi a 8mi sousedy
+                    filler.seedFill4(f.x, f.y, f.color);
+                    //filler.seedFill8(f.x, f.y, f.color);
+                }
             }
         }
 
