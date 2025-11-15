@@ -356,10 +356,12 @@ public class Controller2D implements Controller {
                         vykresleni();
                     }
                     case KeyEvent.VK_ENTER -> { // dokončení polygonu
-                        if (polygon.size() > 2) {
-                            Point2D first = polygon.getFirst();
-                            Point2D last = polygon.getLast();
-                            lines.add(new Line(last, first, 0xffffff));
+                        if (polygon.size() > 1) {
+                            if (polygon.size() > 2) {
+                                Point2D last = polygon.getLast();
+                                Point2D first = polygon.getFirst();
+                                lines.add(new Line(last, first, 0xffffff));
+                            }
                             polygons.add(polygon); // uložení polygonu
                             polygon = new Polygon(); // nový polygon
                             startPoint = null;
