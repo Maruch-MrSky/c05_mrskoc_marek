@@ -11,15 +11,16 @@ import model.objectdata.Polygon;
 import model.objectdata.Rectangle;
 import model.objectdata.PolygonClipper;
 
-import model.rasterops.filler.ScanLine;
 import model.rasterops.rasterizer.LineRasterizer;
-//import model.rasterops.rasterizer.LineRasterizerTrivial;
 import model.rasterops.rasterizer.LineRasterizerBresenham;
 import model.rasterops.rasterizer.LineRasterizerColoredBresenham;
+//import model.rasterops.rasterizer.LineRasterizerTrivial;
 import model.rasterops.rasterizer.PolygonRasterizer;
 
-import model.rasterops.filler.SeedFill;
 //import model.rasterops.filler.FloodFill;
+import model.rasterops.filler.ScanLine;
+import model.rasterops.filler.SeedFill;
+import model.rasterops.clipper.SutherlandHodgmanCutting;
 
 import view.Panel;
 
@@ -455,10 +456,20 @@ public class Controller2D implements Controller {
             }
         }
 
-        // vyplnění polygonů buď ScanLine nebo SEedFill
+        // vyplnění polygonů buď ScanLine nebo SeedFill
         if (usingScanline) { // ScanLine
             ScanLine scanLineFilling = new ScanLine(panel.getRaster());
-            scanLineFilling.fillAll(polygons, scanLineColor);
+            if (clipperPolygon != null && clipperPolygon.isValid()) {
+                SutherlandHodgmanCutting cutter = new SutherlandHodgmanCutting();
+                List<Polygon> clipped = new ArrayList<>();
+                for (Polygon p : polygons) {
+                    Polygon c = cutter.cut(p, clipperPolygon);
+                    if (c != null && c.size() >= 3) clipped.add(c);
+                }
+                scanLineFilling.fillAll(clipped, scanLineColor);
+            } else {
+                scanLineFilling.fillAll(polygons, scanLineColor);
+            }
         } else { // SeedFill
             if (!fills.isEmpty()) {
                 SeedFill filler = new SeedFill(panel.getRaster());
