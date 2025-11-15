@@ -102,14 +102,18 @@ public class Controller2D implements Controller {
                     }
                     int x = e.getX();
                     int y = e.getY();
-                    for (Polygon poly : polygons) { // hledání polygonu obsahujícího bod kliku
-                        if (poly.size() < 3) continue;
-                        if (poly.pointInPolygon(x, y)) {
-                            fills.add(new Filling(x, y, seedFillColor)); // ukladani vykresleni
-                            vykresleni();
-                            return;
-                        }
-                    }
+//                    for (Polygon poly : polygons) { // hledání polygonu obsahujícího bod kliku
+//                        if (poly.size() < 3) continue;
+//                        if (poly.pointInPolygon(x, y)) {
+//                            fills.add(new Filling(x, y, seedFillColor)); // ukladani vykresleni
+//                            vykresleni();
+//                            return;
+//                        }
+//                    }
+                    // seedfill bez nutnosti kliknout do polygonu
+                    fills.add(new Filling(x, y, seedFillColor));
+                    vykresleni();
+                    return;
 
                 } else if (e.getButton() == MouseEvent.BUTTON1) { // levé tlačítko
                     // režim obdelníku
