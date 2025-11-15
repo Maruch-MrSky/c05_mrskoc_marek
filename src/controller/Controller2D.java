@@ -351,8 +351,8 @@ public class Controller2D implements Controller {
 
         // vyplnění polygonů buď ScanLine nebo SEedFill
         if (usingScanline) { // ScanLine
-            ScanLine slf = new ScanLine(panel.getRaster());
-            slf.fillAll(polygons, fillColor);
+            ScanLine scanLineFilling = new ScanLine(panel.getRaster());
+            scanLineFilling.fillAll(polygons, fillColor);
         } else { // SeedFill
             if (!fills.isEmpty()) {
                 SeedFill filler = new SeedFill(panel.getRaster());
@@ -363,6 +363,7 @@ public class Controller2D implements Controller {
                 }
             }
         }
+
 
         if (draggedLine != null) { // tvoření normální pružné úsečky
             if (polygon.size() == 0) {

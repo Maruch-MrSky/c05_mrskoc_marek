@@ -6,6 +6,7 @@ public class Line {
     private Point2D start;
     private Point2D end;
     private final int color;
+    private static final double EPSILON = 1e-9;
 
     public Line(Point2D start, Point2D end) {
         this.start = start;
@@ -60,8 +61,8 @@ public class Line {
         return color;
     }
 
-    public boolean isHorizontal() {
-        return start.getY() == end.getY();
+    public boolean isHorizontal() { // přesnějsí porovnání s tolerancí EPSILON
+        return (start.getY() - end.getY() < EPSILON); // && (end.getY() - start.getY() < EPSILON); neni třeba, všechny hrany už jsou orientované
     }
 
     public void orientate() {
@@ -77,19 +78,17 @@ public class Line {
             throw new IllegalArgumentException("úsečka je rovnoběžaná s osou X");
         }
         // lineární interpolace: x = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
-        return start.getX() + (double)(y - start.getY()) * (end.getX() - start.getX()) / (end.getY() - start.getY());
+        return start.getX() + (double) (y - start.getY()) * (end.getX() - start.getX()) / (end.getY() - start.getY());
     }
 
-    // TODO isInside metoda
     public boolean isInside(Point2D point) {
-        // 1. tečný vektor
+        double dx = end.getX() - start.getX();   // tangentní vektor x
+        double dy = end.getY() - start.getY();   // tangentní vektor y
+        double px = point.getX() - start.getX(); // vektor od startu k bodu x
+        double py = point.getY() - start.getY(); // vektor od startu k bodu y
+        // křížový součin
+        double cross = dx * py - dy * px;
 
-        // 2. normálový vektor
-
-        // 3. vektor od startu hrany k bodu point
-
-        return true;
+        return cross >= -EPSILON;
     }
-
-
 }
