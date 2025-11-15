@@ -9,7 +9,7 @@ import model.objectdata.Line;
 import model.objectdata.Point2D;
 import model.objectdata.Polygon;
 
-import model.rasterops.filler.ScanLineUsingLine;
+import model.rasterops.filler.ScanLine;
 import model.rasterops.rasterizer.LineRasterizer;
 //import model.rasterops.rasterizer.LineRasterizerTrivial;
 import model.rasterops.rasterizer.LineRasterizerBresenham;
@@ -18,8 +18,6 @@ import model.rasterops.rasterizer.PolygonRasterizer;
 
 import model.rasterops.filler.SeedFill;
 //import model.rasterops.filler.FloodFill;
-import model.rasterops.filler.ScanLine;
-import model.rasterops.filler.ScanLineUsingLine;
 
 import view.Panel;
 
@@ -29,7 +27,8 @@ public class Controller2D implements Controller {
     private Point2D startPoint;
     private Point2D endPoint;
     private Line draggedLine;
-    private Color fillColor = Color.GREEN; // barva vyplněni
+    private Color seedFillColor = new Color(0x337733); //Color.GREEN; // barva vyplněni
+    private Color scanLineColor = new Color(0x0888aa); //Color.CYAN; // barva vyplnění
     private Polygon polygon = new Polygon();
 
     private final List<Line> lines = new ArrayList<>();
@@ -105,7 +104,7 @@ public class Controller2D implements Controller {
                     for (Polygon poly : polygons) { // hledání polygonu obsahujícího bod kliku
                         if (poly.size() < 3) continue;
                         if (poly.pointInPolygon(x, y)) {
-                            fills.add(new Filling(x, y, fillColor)); // ukladani vykresleni
+                            fills.add(new Filling(x, y, seedFillColor)); // ukladani vykresleni
                             vykresleni();
                             return;
                         }
@@ -353,9 +352,8 @@ public class Controller2D implements Controller {
 
         // vyplnění polygonů buď ScanLine nebo SEedFill
         if (usingScanline) { // ScanLine
-            ScanLineUsingLine scanLineFilling = new ScanLineUsingLine(panel.getRaster());
-//            ScanLine ScanLineFilling = new ScanLine(panel.getRaster());
-            scanLineFilling.fillAll(polygons, fillColor);
+            ScanLine scanLineFilling = new ScanLine(panel.getRaster());
+            scanLineFilling.fillAll(polygons, scanLineColor);
         } else { // SeedFill
             if (!fills.isEmpty()) {
                 SeedFill filler = new SeedFill(panel.getRaster());

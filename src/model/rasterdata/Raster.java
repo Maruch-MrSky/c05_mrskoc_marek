@@ -47,4 +47,11 @@ public interface Raster {
      * @param color nova farba
      */
     void setPixel(int x, int y, int color);
+
+    /**
+     * Vrátí barvu pozadí rastru
+     *
+     * @return barva pozadí
+     */
+    int getBackgroundRGB();
 }

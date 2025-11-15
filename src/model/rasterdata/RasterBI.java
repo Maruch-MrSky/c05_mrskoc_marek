@@ -50,7 +50,14 @@ public class RasterBI implements Raster {
         }
     }
 
+    @Override
+    public int getBackgroundRGB() {
+        return backgroundColor.getRGB();
+    }
+
     public BufferedImage getImg() {
         return img;
     }
+
+
 }

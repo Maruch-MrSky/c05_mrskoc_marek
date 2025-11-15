@@ -1,8 +1,8 @@
 package model.rasterops.filler;
 
+import model.objectdata.Line;
 import model.objectdata.Point2D;
 import model.objectdata.Polygon;
-import model.objectdata.Line;
 import model.rasterdata.Raster;
 
 import java.awt.Color;
@@ -12,12 +12,14 @@ import java.util.List;
 
 public class ScanLine {
     private final Raster raster;
+    private final int backgroundRGB;
+    private static final double EPS = 1e-9;
 
     public ScanLine(Raster raster) {
         this.raster = raster;
+        this.backgroundRGB = raster.getBackgroundRGB();
     }
 
-    // volaní vyplnění scanline pro všechny polygony
     public void fillAll(List<Polygon> polygons, Color color) {
         if (polygons == null) return;
         for (Polygon p : polygons) {
@@ -25,7 +27,6 @@ public class ScanLine {
         }
     }
 
-    // vyplnění polygonu metodou scanline
     private void fillPolygon(Polygon poly, Color color) {
         if (poly == null || poly.size() < 3) return;
 
@@ -39,41 +40,56 @@ public class ScanLine {
 
         int yStart = (int) Math.floor(minY);
         int yEnd = (int) Math.ceil(maxY);
+        int rgb = color.getRGB();
 
         for (int y = yStart; y < yEnd; y++) {
-            double scanY = y + 0.5; // testovací horizontála uprostřed pixelu
+            double scanY = y + 0.5; // horizontála uprostřed pixelu
             List<Double> intersections = new ArrayList<>();
 
-            for (int i = 0; i < poly.size(); i++) {
+            // sběr průsečíků s každou hranou
+            for (int i = 0, n = poly.size(); i < n; i++) {
                 Point2D a = poly.getItem(i);
-                Point2D b = poly.getItem((i + 1) % poly.size());
-                double x1 = a.getX(), y1 = a.getY();
-                double x2 = b.getX(), y2 = b.getY();
+                Point2D b = poly.getItem((i + 1) % n);
 
-                // ignorovat horizontální hrany
-                if (Math.abs(y1 - y2) < 1e-9) continue;
+                Line edge = new Line(a, b);
+                if (edge.isHorizontal()) continue;
 
-                double yMin = Math.min(y1, y2);
-                double yMax = Math.max(y1, y2);
+                double ay = a.getY();
+                double by = b.getY();
 
-                // pravidlo [yMin, yMax) - zapobíhá dvojitému počítání vrcholů
+                double yMin = Math.min(ay, by);
+                double yMax = Math.max(ay, by);
+
+                // pravidlo [yMin, yMax) aby se nevyskytovalo dvojí počítání vrcholů
                 if (scanY >= yMin && scanY < yMax) {
-                    double t = (scanY - y1) / (y2 - y1);
-                    double ix = x1 + t * (x2 - x1);
-                    intersections.add(ix);
+                    try {
+                        double ix = edge.getIntersection(scanY);
+                        intersections.add(ix);
+                    } catch (IllegalArgumentException ignored) {
+                        // téměř horizontální, přeskočíno
+                    }
                 }
             }
 
             if (intersections.isEmpty()) continue;
             Collections.sort(intersections);
 
-            // spojování dvojic průsečíků
-            for (int i = 0; i + 1 < intersections.size(); i += 2) {
-                int x1 = (int) Math.ceil(intersections.get(i) - 1e-9);
-                int x2 = (int) Math.floor(intersections.get(i + 1) + 1e-9);
-                if (x2 < x1) continue;
-                for (int x = x1; x <= x2; x++) {
-                    raster.setPixel(x, y, color.getRGB());
+            // vyplnit intervaly mezi páry průsečíků (even-odd)
+            for (int k = 0; k + 1 < intersections.size(); k += 2) {
+                double left = intersections.get(k);
+                double right = intersections.get(k + 1);
+                // přidání EPS pro správné zaokrouhlování hran
+                int xStart = (int) Math.ceil(left + EPS);
+                int xEnd = (int) Math.floor(right - EPS);
+                if (xEnd < xStart) continue;
+
+                for (int x = xStart; x <= xEnd; x++) {
+                    try {
+                        int existing = raster.getPixel(x, y);
+                        if (existing != backgroundRGB) continue; // nepřepisovat již vykreslené hrany / pixely
+                        raster.setPixel(x, y, rgb);
+                    } catch (IndexOutOfBoundsException ignored) {
+                    }
                 }
             }
         }
