@@ -9,6 +9,7 @@ import model.objectdata.Line;
 import model.objectdata.Point2D;
 import model.objectdata.Polygon;
 import model.objectdata.Rectangle;
+import model.objectdata.PolygonClipper;
 
 import model.rasterops.filler.ScanLine;
 import model.rasterops.rasterizer.LineRasterizer;
@@ -28,9 +29,11 @@ public class Controller2D implements Controller {
     private Point2D startPoint;
     private Point2D endPoint;
     private Line draggedLine;
-    private Color seedFillColor = new Color(0x337733); //Color.GREEN; // barva vyplněni
-    private Color scanLineColor = new Color(0x0888aa); //Color.CYAN; // barva vyplnění
+    private Color seedFillColor = new Color(0x337733); //Color.GREEN; // barva vyplněni SeedFill
+    private Color scanLineColor = new Color(0x0888aa); //Color.CYAN; // barva vyplnění ScanLine
+    private Color clipColor = new Color(0xffd700); //Color.GOLD; // barva ořezávacího polygonu
     private Polygon polygon = new Polygon();
+    private PolygonClipper clipperPolygon = null; //
 
     private final List<Line> lines = new ArrayList<>();
     private final List<Polygon> polygons = new ArrayList<>();
@@ -40,7 +43,7 @@ public class Controller2D implements Controller {
     private final LineRasterizerColoredBresenham lineRasterizerColorful;
 
     private int grabbedPoint = -1; // index přesunovaného vrcholu polygonu, -1 = nic
-    private int grabbedPolygon = -1; // index přesunovaného polygonu, -1 = nic
+    private int grabbedPolygon = -1; // index přesunovaného polygonu, -1 = nic, -2 = aktuální polygon, -3 = clipping polygon
 
     private boolean shifted = false;
     private boolean colorfull = false; // odmítám, tahle blbost mě připraví o nervy
@@ -92,6 +95,17 @@ public class Controller2D implements Controller {
                         grabbedPoint = polygon.findNearestPoint(clickPoint);
                         return;
                     }
+
+                    // přesunovaní vrcholu ořezávacího polygonu (pokud existuje)
+                    if (clipperPolygon != null) {
+                        int nearestClip = clipperPolygon.findNearestPoint(clickPoint);
+                        if (nearestClip != -1 && clipperPolygon.getItem(nearestClip).distanceTo(clickPoint) <= 10) {
+                            grabbedPolygon = -3; // clipping polygon
+                            grabbedPoint = nearestClip;
+                            return;
+                        }
+                    }
+
                     // přesunovaní vrcholu uložených polygonů
                     for (int i = 0; i < polygons.size(); i++) { // hledání bodu v ostatních polygonech
                         Polygon poly = polygons.get(i);
@@ -268,6 +282,10 @@ public class Controller2D implements Controller {
                         Point2D p = polygon.getItem(grabbedPoint);
                         p.setX(e.getX());
                         p.setY(e.getY());
+                    } else if (grabbedPolygon == -3) { // ořezávací polygon
+                        Point2D p = clipperPolygon.getItem(grabbedPoint);
+                        p.setX(e.getX());
+                        p.setY(e.getY());
                     } else { // uložený polygon
                         Polygon pgn = polygons.get(grabbedPolygon);
                         Point2D p = pgn.getItem(grabbedPoint);
@@ -333,6 +351,7 @@ public class Controller2D implements Controller {
                         draggedLine = null;
                         startPoint = null;
                         endPoint = null;
+                        clipperPolygon = null;
                         panel.getRaster().clear();
                         panel.repaint();
                     }
@@ -356,6 +375,21 @@ public class Controller2D implements Controller {
                     }
                     case KeyEvent.VK_F -> {
                         usingScanline = !usingScanline;
+                        vykresleni();
+                    }
+                    case KeyEvent.VK_G -> {
+                        Point mouse = panel.getMousePosition();
+                        double cx, cy;
+                        if (mouse != null) {
+                            cx = mouse.getX();
+                            cy = mouse.getY();
+                        } else {
+                            cx = panel.getWidth() / 2.0;
+                            cy = panel.getHeight() / 2.0;
+                        }
+                        double radius = Math.min(panel.getWidth(), panel.getHeight()) / 3.0; // pětiúhelník (2/3) plátna
+                        clipperPolygon = PolygonClipper.regularPentagon(cx, cy, radius);
+                        clipperPolygon.validate();
                         vykresleni();
                     }
                     case KeyEvent.VK_ENTER -> { // dokončení polygonu
@@ -404,15 +438,22 @@ public class Controller2D implements Controller {
 
     private void vykresleni() {
         panel.getRaster().clear();
-        for (Line l : lines) {
+        for (Line l : lines) { // vykreslení všech úseček
             lineRasterizer.rasterize(l);
         }
-
         PolygonRasterizer pr = new PolygonRasterizer(lineRasterizer); // vykreslení všech uložených polygonů
         for (Polygon poly : polygons) {
             pr.rasterize(poly, true); // vykreslení bodů polygonu
         }
         pr.rasterize(polygon, false); // aktuální polygon (body, neuzavřený)
+
+        if (clipperPolygon != null && clipperPolygon.size() >= 2) { // ořezávací polygon
+            for (int i = 0; i < clipperPolygon.size(); i++) {
+                Point2D a = clipperPolygon.getItem(i);
+                Point2D b = clipperPolygon.getItem((i + 1) % clipperPolygon.size());
+                lineRasterizer.rasterize(new Line(a, b, clipColor.getRGB()));
+            }
+        }
 
         // vyplnění polygonů buď ScanLine nebo SEedFill
         if (usingScanline) { // ScanLine
