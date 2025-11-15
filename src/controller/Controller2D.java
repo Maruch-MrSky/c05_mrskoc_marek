@@ -9,6 +9,7 @@ import model.objectdata.Line;
 import model.objectdata.Point2D;
 import model.objectdata.Polygon;
 
+import model.rasterops.filler.ScanLineUsingLine;
 import model.rasterops.rasterizer.LineRasterizer;
 //import model.rasterops.rasterizer.LineRasterizerTrivial;
 import model.rasterops.rasterizer.LineRasterizerBresenham;
@@ -18,6 +19,7 @@ import model.rasterops.rasterizer.PolygonRasterizer;
 import model.rasterops.filler.SeedFill;
 //import model.rasterops.filler.FloodFill;
 import model.rasterops.filler.ScanLine;
+import model.rasterops.filler.ScanLineUsingLine;
 
 import view.Panel;
 
@@ -351,7 +353,8 @@ public class Controller2D implements Controller {
 
         // vyplnění polygonů buď ScanLine nebo SEedFill
         if (usingScanline) { // ScanLine
-            ScanLine scanLineFilling = new ScanLine(panel.getRaster());
+            ScanLineUsingLine scanLineFilling = new ScanLineUsingLine(panel.getRaster());
+//            ScanLine ScanLineFilling = new ScanLine(panel.getRaster());
             scanLineFilling.fillAll(polygons, fillColor);
         } else { // SeedFill
             if (!fills.isEmpty()) {

@@ -61,8 +61,9 @@ public class Line {
         return color;
     }
 
-    public boolean isHorizontal() { // přesnějsí porovnání s tolerancí EPSILON
-        return (start.getY() - end.getY() < EPSILON); // && (end.getY() - start.getY() < EPSILON); neni třeba, všechny hrany už jsou orientované
+    public boolean isHorizontal() {
+        if (start == null || end == null) return false;
+        return Math.abs(start.getY() - end.getY()) < EPSILON; // přesnějsí porovnání s tolerancí EPSILON
     }
 
     public void orientate() {
@@ -73,12 +74,12 @@ public class Line {
         }
     }
 
-    public double getIntersection(int y) {
-        if (start.getY() == end.getY()) {
-            throw new IllegalArgumentException("úsečka je rovnoběžaná s osou X");
+    public double getIntersection(double y) {
+        if (Math.abs(start.getY() - end.getY()) < EPSILON) {
+            throw new IllegalArgumentException("úsečka je rovnoběžná s osou X");
         }
         // lineární interpolace: x = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
-        return start.getX() + (double) (y - start.getY()) * (end.getX() - start.getX()) / (end.getY() - start.getY());
+        return start.getX() + (y - start.getY()) * (end.getX() - start.getX()) / (end.getY() - start.getY());
     }
 
     public boolean isInside(Point2D point) {

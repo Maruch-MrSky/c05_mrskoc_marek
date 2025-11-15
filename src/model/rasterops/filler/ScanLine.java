@@ -2,6 +2,7 @@ package model.rasterops.filler;
 
 import model.objectdata.Point2D;
 import model.objectdata.Polygon;
+import model.objectdata.Line;
 import model.rasterdata.Raster;
 
 import java.awt.Color;
