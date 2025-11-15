@@ -8,6 +8,7 @@ import java.util.List;
 import model.objectdata.Line;
 import model.objectdata.Point2D;
 import model.objectdata.Polygon;
+import model.objectdata.Rectangle;
 
 import model.rasterops.filler.ScanLine;
 import model.rasterops.rasterizer.LineRasterizer;
@@ -43,7 +44,7 @@ public class Controller2D implements Controller {
 
     private boolean shifted = false;
     private boolean colorfull = false; // odmítám, tahle blbost mě připraví o nervy
-    private boolean rectangle = false;
+    private boolean rezimRectangle = false;
     private boolean usingScanline = false;
 
     private static class Filling {
@@ -111,6 +112,39 @@ public class Controller2D implements Controller {
                     }
 
                 } else if (e.getButton() == MouseEvent.BUTTON1) { // levé tlačítko
+                    // režim obdelníku
+                    if (rezimRectangle) {
+                        // začátek základny (konec v mouseReleased)
+                        if (startPoint == null) {
+                            startPoint = new Point2D(e.getX(), e.getY());
+                            endPoint = null;
+                            draggedLine = null;
+                            vykresleni();
+                            return;
+                        }
+                        // výška obdelníku
+                        if (startPoint != null && endPoint != null) {
+                            Point2D heightPoint = new Point2D(e.getX(), e.getY());
+                            Rectangle rectangle = new Rectangle(startPoint, endPoint, heightPoint);
+                            // přidání hran a polygonu
+                            for (int i = 0; i < rectangle.size(); i++) {
+                                Point2D a = rectangle.getItem(i);
+                                Point2D b = rectangle.getItem((i + 1) % rectangle.size());
+                                lines.add(new Line(a, b, 0xffffff));
+                            }
+                            polygons.add(rectangle);
+                            // reset po vytvoření obdélníku
+                            startPoint = null;
+                            endPoint = null;
+                            draggedLine = null;
+                            rezimRectangle = false; // vypnutí režimu rectangle po vytvoření
+                            vykresleni();
+                            return;
+                        }
+                        return;
+                    }
+
+                    // normální polygon
                     if (polygon.size() == 0) {
                         startPoint = new Point2D(e.getX(), e.getY());
                     } else {
@@ -155,7 +189,18 @@ public class Controller2D implements Controller {
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                if (startPoint == null) return;
+                if (startPoint == null) return; // bez startPoint se nic neděje
+                // dokončení základny obdélníku
+                if (rezimRectangle) {
+                    if (startPoint != null && endPoint == null) {
+                        endPoint = new Point2D(e.getX(), (int) Math.round(startPoint.getY()));
+                        draggedLine = new Line(startPoint, endPoint, 0xffffff); // zobrazení základny
+                        vykresleni();
+                        return;
+                    }
+                    return;
+                }
+
                 grabbedPoint = -1;
                 grabbedPolygon = -1;
                 int color; // fix přetejkání když se použije draggedLine v novém polygonu
@@ -210,7 +255,7 @@ public class Controller2D implements Controller {
         panel.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                // TODO logika kreslení Rectangle (přidat třídu Rectangle a RectangleRasterizer)
+                // přesouvání vrcholu polygonu
                 if (grabbedPoint != -1) {
                     if (grabbedPolygon == -2) { // aktuální polygon
                         Point2D p = polygon.getItem(grabbedPoint);
@@ -223,7 +268,12 @@ public class Controller2D implements Controller {
                         p.setY(e.getY());
                     }
                     vykresleni();
-                } else if (startPoint != null) {
+                    return;
+                }
+                // při tažení v rectangle režimu nic nekreslit
+                if (rezimRectangle && startPoint != null) return;
+                // běžné úsečeky/polygon
+                if (startPoint != null) {
                     int x2 = e.getX();
                     int y2 = e.getY();
 
@@ -268,7 +318,7 @@ public class Controller2D implements Controller {
                         }
                     }
                     case KeyEvent.VK_C -> {
-                        // vymazat vše: body polygonu, uložené úsečky, výplň
+                        // vymazat vše: body polygonu, uložené úsečky, výplně
                         polygon.clear();
                         polygons.clear();
                         lines.clear();
@@ -290,7 +340,12 @@ public class Controller2D implements Controller {
                         colorfull = !colorfull;
                     }
                     case KeyEvent.VK_D -> {
-                        rectangle = !rectangle;
+                        rezimRectangle = !rezimRectangle;
+                        // při přepnutí režimu zrušíme nedokončený obdélník
+                        startPoint = null;
+                        endPoint = null;
+                        draggedLine = null;
+                        vykresleni();
                     }
                     case KeyEvent.VK_F -> {
                         usingScanline = !usingScanline;
@@ -365,8 +420,7 @@ public class Controller2D implements Controller {
             }
         }
 
-
-        if (draggedLine != null) { // tvoření normální pružné úsečky
+        if (draggedLine != null) { // tvoření normální pružné úsečky / zobrazení základny obdelníku
             if (polygon.size() == 0) {
                 (colorfull ? lineRasterizerColorful : lineRasterizer).rasterize(draggedLine);
             } else {
